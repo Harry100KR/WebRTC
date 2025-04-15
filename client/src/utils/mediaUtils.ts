@@ -96,10 +96,14 @@ export class MediaQualityManager {
       if (videoTrack) {
         try {
           await videoTrack.applyConstraints({
-            advanced: [{ hardwareAcceleration: true }]
+            advanced: [{
+              width: { ideal: 1920 },
+              height: { ideal: 1080 },
+              frameRate: { ideal: 30 }
+            }]
           });
         } catch (error) {
-          console.warn('Hardware acceleration not supported:', error);
+          console.warn('Advanced video constraints not supported:', error);
         }
       }
     }

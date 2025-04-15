@@ -1,50 +1,82 @@
 import { Pool } from 'pg';
-import Redis from 'redis';
-import { promisify } from 'util';
+import { createClient } from 'redis';
+import NodeCache from 'node-cache';
+import { config } from 'dotenv';
+
+config();
 
 // PostgreSQL connection pool configuration
 export const pgPool = new Pool({
-  user: process.env.DB_USER,
-  host: process.env.DB_HOST,
-  database: process.env.DB_NAME,
-  password: process.env.DB_PASSWORD,
+  user: process.env.POSTGRES_USER || 'postgres',
+  password: process.env.POSTGRES_PASSWORD,
+  host: process.env.DB_HOST || 'localhost',
+  database: process.env.DB_NAME || 'webrtc_db',
   port: parseInt(process.env.DB_PORT || '5432'),
   max: 20, // Maximum number of clients in the pool
   idleTimeoutMillis: 30000,
   connectionTimeoutMillis: 2000,
 });
 
-// Redis client configuration
-export const redisClient = Redis.createClient({
-  url: process.env.REDIS_URL || 'redis://localhost:6379',
-  socket: {
-    connectTimeout: 10000,
-    keepAlive: 5000,
-    reconnectStrategy: (retries) => Math.min(retries * 100, 3000),
-  }
+// Fallback in-memory cache for development
+const memoryCache = new NodeCache({
+  stdTTL: 600, // 10 minutes default TTL
+  checkperiod: 120,
 });
 
-// Promisify Redis methods
-export const redisGet = promisify(redisClient.get).bind(redisClient);
-export const redisSet = promisify(redisClient.set).bind(redisClient);
+// Redis client configuration
+let redisClient: any = null;
+const useRedis = process.env.USE_REDIS === 'true';
+
+if (useRedis) {
+  redisClient = createClient({
+    url: process.env.REDIS_URL || 'redis://localhost:6379',
+    socket: {
+      connectTimeout: 10000,
+      reconnectStrategy: (retries) => Math.min(retries * 100, 3000),
+    }
+  });
+
+  // Connect to Redis
+  redisClient.connect().catch((err: Error) => {
+    console.warn('Redis connection failed, falling back to in-memory cache:', err.message);
+    redisClient = null;
+  });
+}
 
 // Cache middleware
 export const cacheMiddleware = (duration: number) => {
   return async (req: any, res: any, next: any) => {
     const key = `cache:${req.originalUrl || req.url}`;
     try {
-      const cachedResponse = await redisGet(key);
+      let cachedResponse: string | null = null;
+      
+      if (redisClient) {
+        // Try Redis first
+        const redisResponse = await redisClient.get(key);
+        cachedResponse = redisResponse || null;
+      } else {
+        // Fallback to memory cache
+        const memoryResponse = memoryCache.get<string>(key);
+        cachedResponse = memoryResponse || null;
+      }
+
       if (cachedResponse) {
         return res.json(JSON.parse(cachedResponse));
       }
+
       res.sendResponse = res.json;
       res.json = (body: any) => {
-        redisSet(key, JSON.stringify(body), 'EX', duration);
+        const stringifiedBody = JSON.stringify(body);
+        if (redisClient) {
+          redisClient.set(key, stringifiedBody, { EX: duration }).catch(console.error);
+        } else {
+          memoryCache.set(key, stringifiedBody, duration);
+        }
         res.sendResponse(body);
       };
       next();
     } catch (error) {
-      console.error('Redis cache error:', error);
+      console.error('Cache error:', error);
       next();
     }
   };
@@ -66,10 +98,18 @@ export const checkDatabaseConnection = async () => {
 
 // Redis health check
 export const checkRedisConnection = async () => {
-  try {
-    await redisClient.ping();
-    console.log('Redis connection successful');
+  if (!useRedis) {
+    console.log('Redis is disabled, using in-memory cache');
     return true;
+  }
+  
+  try {
+    if (redisClient) {
+      await redisClient.ping();
+      console.log('Redis connection successful');
+      return true;
+    }
+    return false;
   } catch (error) {
     console.error('Redis connection error:', error);
     return false;
@@ -85,7 +125,9 @@ export const initializeDatabaseConnections = async () => {
     console.error('Unexpected error on idle client', err);
   });
   
-  redisClient.on('error', (err) => {
-    console.error('Redis Client Error', err);
-  });
+  if (redisClient) {
+    redisClient.on('error', (err: Error) => {
+      console.error('Redis Client Error', err);
+    });
+  }
 }; 

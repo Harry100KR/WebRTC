@@ -11,7 +11,7 @@ import {
   ListItem,
   ListItemIcon,
   ListItemText
-} from '@material-ui/core';
+} from '@mui/material';
 import {
   Videocam,
   ScreenShare,
@@ -19,7 +19,7 @@ import {
   Lock,
   Timer,
   Delete
-} from '@material-ui/icons';
+} from '@mui/icons-material';
 
 interface RecordingConsentProps {
   onConsent: (type: 'video' | 'screen' | 'both') => void;

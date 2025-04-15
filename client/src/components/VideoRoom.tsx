@@ -1,15 +1,21 @@
 import React, { useEffect, useRef, useState } from 'react';
 import SimplePeer from 'simple-peer';
-import { Socket } from 'socket.io-client';
-import { Box, Button, Grid, Typography } from '@material-ui/core';
+import io, { Socket } from 'socket.io-client';
+import { Box, Button, Grid, Typography } from '@mui/material';
 import RecordingConsent from './RecordingConsent';
 import useRecording from '../hooks/useRecording';
 
 interface VideoRoomProps {
-  socket: Socket;
+  socket: ReturnType<typeof io>;
   roomId: string;
   userId: string;
   role: 'counselor' | 'client';
+}
+
+// Add interface for signal data
+interface SignalData {
+  signal: SimplePeer.SignalData;
+  roomId: string;
 }
 
 const VideoRoom: React.FC<VideoRoomProps> = ({ socket, roomId, userId, role }) => {
@@ -61,11 +67,17 @@ const VideoRoom: React.FC<VideoRoomProps> = ({ socket, roomId, userId, role }) =
     };
 
     initializeMedia();
+    
+    // Cleanup function
     return () => {
-      stream?.getTracks().forEach(track => track.stop());
-      screenStream?.getTracks().forEach(track => track.stop());
+      if (stream) {
+        stream.getTracks().forEach(track => track.stop());
+      }
+      if (screenStream) {
+        screenStream.getTracks().forEach(track => track.stop());
+      }
     };
-  }, []);
+  }, [stream, screenStream]);
 
   useEffect(() => {
     if (!stream) return;
@@ -76,17 +88,17 @@ const VideoRoom: React.FC<VideoRoomProps> = ({ socket, roomId, userId, role }) =
       trickle: false
     });
 
-    peer.on('signal', data => {
+    peer.on('signal', (data: SimplePeer.SignalData) => {
       socket.emit('signal', { signal: data, roomId });
     });
 
-    peer.on('stream', remoteStream => {
+    peer.on('stream', (remoteStream: MediaStream) => {
       if (remoteVideoRef.current) {
         remoteVideoRef.current.srcObject = remoteStream;
       }
     });
 
-    socket.on('signal', ({ signal }) => {
+    socket.on('signal', ({ signal }: SignalData) => {
       peer.signal(signal);
     });
 
