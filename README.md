@@ -1,22 +1,91 @@
-# WebRTC Video Counseling Application
+# 🎥 WebRTC Video Counseling Application
 
 A secure and performant video counseling platform built with React, Node.js, and WebRTC.
 
-## Features
+## ✨ Features
 
-- Real-time video communication using WebRTC
-- Secure authentication and authorization
-- Media quality optimization based on network conditions
-- File sharing with image optimization
-- Redis caching for improved performance
-- Comprehensive logging and monitoring
-- Docker-based development environment
+- 📹 Real-time video communication using WebRTC
+- 🔒 Secure authentication and authorization
+- 📊 Media quality optimization based on network conditions
+- 📁 File sharing with image optimization
+- ⚡ Redis caching for improved performance
+- 📝 Comprehensive logging and monitoring
+- 🐳 Docker-based development environment
 
-## Prerequisites
+## 🏗️ Solution Architecture
 
-- Docker and Docker Compose
-- Git
-- Node.js 18+ (for local development without Docker)
+### WebRTC Communication Flow
+
+```mermaid
+graph LR
+    A[Client A] -->|1. Signaling| B[Signaling Server]
+    C[Client B] -->|1. Signaling| B
+    B -->|2. Exchange SDP/ICE| A
+    B -->|2. Exchange SDP/ICE| C
+    A <-->|3. P2P Connection| C
+    D[STUN/TURN Server] -->|4. NAT Traversal| A
+    D -->|4. NAT Traversal| C
+    E[Media Server] -->|5. Recording/Broadcasting| A
+    E -->|5. Recording/Broadcasting| C
+```
+
+### System Components
+
+#### 1. Client-Side Architecture
+
+- **React Frontend**
+  - WebRTC API integration
+  - Media stream handling
+  - UI/UX components
+  - State management (Redux)
+  - Real-time updates
+
+#### 2. Server-Side Components
+
+- **Signaling Server**
+
+  - WebSocket connections
+  - Session management
+  - Client coordination
+  - ICE candidate exchange
+
+- **Media Server**
+  - Stream processing
+  - Recording capabilities
+  - Broadcasting support
+  - Quality optimization
+
+#### 3. Infrastructure
+
+- **STUN/TURN Servers**
+
+  - NAT traversal
+  - Fallback relay
+  - Connection establishment
+
+- **Redis Layer**
+  - Session storage
+  - Pub/Sub messaging
+  - Cache management
+
+### Security Architecture
+
+```mermaid
+graph TD
+    A[Client] -->|TLS/SSL| B[Load Balancer]
+    B --> C[Application Server]
+    C --> D[Authentication Service]
+    C --> E[Redis Cache]
+    C --> F[Media Server]
+    C --> G[Database]
+    H[STUN/TURN] -->|Encrypted| A
+```
+
+## 🚀 Prerequisites
+
+- 🐳 Docker and Docker Compose
+- 📦 Git
+- ⚙️ Node.js 18+ (for local development without Docker)
 
 ## Quick Start
 
@@ -46,20 +115,21 @@ The application will be available at:
 - Server: http://localhost:5000
 - MinIO Console: http://localhost:9001
 
-## Development
+## 🔧 Development
 
-### Directory Structure
+### 📁 Directory Structure
 
 ```
-├── client/                 # React frontend application
-│   ├── src/               # Source code
-│   ├── public/            # Static files
-│   └── Dockerfile.dev     # Development Dockerfile
-├── server/                # Node.js backend application
-│   ├── src/              # Source code
-│   ├── migrations/       # Database migrations
-│   └── Dockerfile.dev    # Development Dockerfile
-└── docker-compose.yml    # Docker Compose configuration
+📦 WebRTC-demo
+ ┣ 📂 client/                 # React frontend application
+ ┃ ┣ 📂 src/                 # Source code
+ ┃ ┣ 📂 public/             # Static files
+ ┃ ┗ 📜 Dockerfile.dev      # Development Dockerfile
+ ┣ 📂 server/                # Node.js backend application
+ ┃ ┣ 📂 src/                # Source code
+ ┃ ┣ 📂 migrations/         # Database migrations
+ ┃ ┗ 📜 Dockerfile.dev      # Development Dockerfile
+ ┗ 📜 docker-compose.yml    # Docker Compose configuration
 ```
 
 ### Environment Variables
@@ -143,29 +213,41 @@ docker-compose exec client npm run format
 docker-compose exec server npm run format
 ```
 
-## Security Features
+## 🔐 Security Features
 
-- Content Security Policy (CSP) headers
-- Rate limiting for API and WebRTC endpoints
-- Input sanitization
-- Secure session management with Redis
-- CORS protection
-- XSS prevention
-- Secure WebRTC configurations
+- 🛡️ Content Security Policy (CSP) headers
+- 🚫 Rate limiting for API and WebRTC endpoints
+- 🧹 Input sanitization
+- 🔒 Secure session management with Redis
+- 🌐 CORS protection
+- 🛑 XSS prevention
+- 🔏 Secure WebRTC configurations
 
-## Performance Optimizations
+## ⚡ Performance Optimizations
 
-- Connection pooling for database
-- Redis caching
-- Media quality management
-- Image optimization
-- Hardware acceleration support
-- Echo cancellation and noise suppression
-- WebRTC bandwidth adaptation
-- Automatic quality scaling
-- Network resilience with ICE/TURN/STUN configurations
+- 🔄 Connection pooling for database
+- 💾 Redis caching
+- 📊 Media quality management
+- 🖼️ Image optimization
+- 🖥️ Hardware acceleration support
+- 🎤 Echo cancellation and noise suppression
+- 📡 WebRTC bandwidth adaptation
+- 📈 Automatic quality scaling
+- 🌐 Network resilience with ICE/TURN/STUN configurations
 
-## Deployment
+### WebRTC Quality of Service
+
+```mermaid
+graph TD
+    A[Network Monitor] -->|Bandwidth Detection| B[Quality Adapter]
+    B -->|Resolution Control| C[Video Encoder]
+    B -->|Bitrate Control| D[Audio Encoder]
+    E[Network Conditions] -->|Feedback| A
+    C -->|Optimized Stream| F[Peer Connection]
+    D -->|Optimized Stream| F
+```
+
+## 📝 Deployment
 
 ### Production Setup
 
@@ -200,7 +282,7 @@ The application supports horizontal scaling:
 - WebRTC statistics monitoring
 - Error tracking and alerting
 
-## Contributing
+## 🤝 Contributing
 
 1. Fork the repository
 2. Create your feature branch (`git checkout -b feature/amazing-feature`)
@@ -208,6 +290,6 @@ The application supports horizontal scaling:
 4. Push to the branch (`git push origin feature/amazing-feature`)
 5. Open a Pull Request
 
-## License
+## 📝 License
 
 This project is licensed under the MIT License - see the LICENSE file for details.
