@@ -1,326 +1,256 @@
-# 🎥 WebRTC Video Counseling Application
+# 🌟 WebRTC Video Counseling Platform
 
-A secure and performant video counseling platform built with React, Node.js, and WebRTC.
+> 🎯 A secure, high-performance video counseling platform powered by React, Node.js, and WebRTC technology.
 
-## ✨ Features
+<div align="center">
 
-- 📹 Real-time video communication using WebRTC
-- 🔒 Secure authentication and authorization
-- 📊 Media quality optimization based on network conditions
-- 📁 File sharing with image optimization
-- ⚡ Redis caching for improved performance
-- 📝 Comprehensive logging and monitoring
-- 🐳 Docker-based development environment
+[![React](https://img.shields.io/badge/React-20232A?style=for-the-badge&logo=react&logoColor=61DAFB)](https://reactjs.org/)
+[![Node.js](https://img.shields.io/badge/Node.js-339933?style=for-the-badge&logo=nodedotjs&logoColor=white)](https://nodejs.org/)
+[![WebRTC](https://img.shields.io/badge/WebRTC-333333?style=for-the-badge&logo=webrtc&logoColor=white)](https://webrtc.org/)
+[![Docker](https://img.shields.io/badge/Docker-2CA5E0?style=for-the-badge&logo=docker&logoColor=white)](https://www.docker.com/)
 
-## 🏗️ Solution Architecture
+</div>
 
-### WebRTC Communication Flow
+## 📑 Table of Contents
 
+- [✨ Key Features](#-key-features)
+- [🏗️ Architecture](#️-architecture)
+- [🚀 Getting Started](#-getting-started)
+- [💻 Development](#-development)
+- [🔐 Security](#-security)
+- [⚡ Performance](#-performance)
+- [📦 Deployment](#-deployment)
+- [🤝 Contributing](#-contributing)
+- [📄 License](#-license)
+
+## ✨ Key Features
+
+- 🎥 **Real-time Video Communication**
+
+  - WebRTC-powered video streaming
+  - Adaptive quality optimization
+  - Multi-participant support
+
+- 🔒 **Enterprise Security**
+
+  - End-to-end encryption
+  - Secure authentication
+  - Role-based access control
+
+- 📊 **Smart Optimization**
+
+  - Network condition adaptation
+  - Automatic quality scaling
+  - Bandwidth management
+
+- 🛠️ **Advanced Capabilities**
+  - File sharing with optimization
+  - Redis-powered caching
+  - Comprehensive monitoring
+
+## 🏗️ Architecture
+
+### 🔄 WebRTC Communication Flow
+
+```mermaid
+graph LR
+    A[Client A] --> B[Signaling Server]
+    B --> C[Client B]
+    A <-.-> C
+    style A fill:#93c5fd
+    style B fill:#fde68a
+    style C fill:#93c5fd
 ```
-┌──────────────┐                ┌──────────────────┐                ┌──────────────┐
-│              │   Signaling    │                  │    Signaling   │              │
-│   Client A   │───────────────▶│  Signaling       │◀──────────────│   Client B   │
-│              │                │  Server          │                │              │
-└──────┬───────┘                └──────────┬───────┘                └──────┬───────┘
-       │                                   │                               │
-       │                      SDP/ICE      │                              │
-       │◀──────────────────────────────────┴──────────────────────────────┘
-       │                    Exchange                                       │
-       │                                                                  │
-       │              P2P Direct Connection                               │
-       ├─────────────────────────────────────────────────────────────────┤
-       │                    WebRTC Stream                                 │
-       │◄═══════════════════════════════════════════════════════════════►│
-       │                                                                  │
-┌──────┴───────┐                                                  ┌──────┴───────┐
-│  STUN/TURN   │                                                  │     Media    │
-│   Server     │                                                  │    Server    │
-└──────────────┘                                                  └──────────────┘
-```
 
-### System Components
+#### 1️⃣ Initial Signaling
 
-#### 1. Client-Side Architecture
+- 🤝 Client connection establishment
+- 📡 Parameter exchange
+- 🔐 Secure channel setup
+
+#### 2️⃣ Connection Setup
+
+- 📝 SDP exchange
+- 🧊 ICE candidate sharing
+- 🎛️ Media capability negotiation
+
+#### 3️⃣ P2P Connection
+
+- 🔗 Direct peer connection
+- 🎥 Media streaming
+- 📊 Network optimization
+
+### 🏢 System Components
+
+#### 🖥️ Client Architecture
 
 - **React Frontend**
-  - WebRTC API integration
-  - Media stream handling
-  - UI/UX components
-  - State management (Redux)
-  - Real-time updates
+  - 🎨 Modern UI/UX
+  - 📱 Responsive design
+  - 🔄 Redux state management
 
-#### 2. Server-Side Components
+#### ⚙️ Server Components
 
 - **Signaling Server**
 
-  - WebSocket connections
-  - Session management
-  - Client coordination
-  - ICE candidate exchange
+  - 🔌 WebSocket management
+  - 👥 Session coordination
+  - 🔄 Real-time updates
 
 - **Media Server**
-  - Stream processing
-  - Recording capabilities
-  - Broadcasting support
-  - Quality optimization
+  - 🎬 Stream processing
+  - 💾 Recording capabilities
+  - 📡 Broadcasting features
 
-#### 3. Infrastructure
+### 🛡️ Security Architecture
 
-- **STUN/TURN Servers**
-
-  - NAT traversal
-  - Fallback relay
-  - Connection establishment
-
-- **Redis Layer**
-  - Session storage
-  - Pub/Sub messaging
-  - Cache management
-
-### Security Architecture
-
-```
-                          ┌─────────────────────────┐
-                          │      Load Balancer      │
-                          │    [TLS Termination]    │
-                          └───────────┬─────────────┘
-                                     │
-                          ┌──────────┴──────────┐
-                          │   Application       │
-                          │      Server        │
-                          └──┬──────┬──────┬───┘
-             ┌───────────────┘      │      └───────────────┐
-             │                      │                      │
-    ┌────────┴────────┐    ┌───────┴────────┐    ┌───────┴────────┐
-    │  Authentication │    │     Redis      │    │     Media      │
-    │     Service     │    │     Cache      │    │     Server     │
-    └────────┬────────┘    └───────┬────────┘    └───────┬────────┘
-             │                      │                      │
-    ┌────────┴────────┐            │              ┌───────┴────────┐
-    │    Database     │            └──────────────│   Storage      │
-    └────────────────┘                           └────────────────┘
+```mermaid
+graph TD
+    A[Edge Security] --> B[Application Security]
+    B --> C[Data Security]
+    C --> D[Network Security]
+    style A fill:#fecaca
+    style B fill:#bfdbfe
+    style C fill:#bbf7d0
+    style D fill:#fde68a
 ```
 
-## 🚀 Prerequisites
+## 🚀 Getting Started
 
-- 🐳 Docker and Docker Compose
+### Prerequisites
+
+- 🐳 Docker & Docker Compose
 - 📦 Git
-- ⚙️ Node.js 18+ (for local development without Docker)
+- ⚙️ Node.js 18+
 
-## Quick Start
+### Quick Setup
 
-1. Clone the repository:
+1. **Clone Repository**
+   \`\`\`bash
+   git clone <repository-url>
+   cd WebRTC-demo
+   \`\`\`
 
-```bash
-git clone <your-repository-url>
-cd WebRTC-demo
-```
+2. **Environment Setup**
+   \`\`\`bash
+   cp server/.env.example server/.env
+   cp client/.env.example client/.env
+   \`\`\`
 
-2. Create environment files:
+3. **Launch Application**
+   \`\`\`bash
+   docker-compose up
+   \`\`\`
 
-```bash
-cp server/.env.example server/.env
-cp client/.env.example client/.env
-```
+🌐 Access Points:
 
-3. Start the development environment:
+- Frontend: http://localhost:3000
+- Backend: http://localhost:5000
+- Admin: http://localhost:9001
 
-```bash
-docker-compose up
-```
+## 💻 Development
 
-The application will be available at:
+### 📁 Project Structure
 
-- Client: http://localhost:3000
-- Server: http://localhost:5000
-- MinIO Console: http://localhost:9001
-
-## 🔧 Development
-
-### 📁 Directory Structure
-
-```
+\`\`\`
 📦 WebRTC-demo
- ┣ 📂 client/                 # React frontend application
- ┃ ┣ 📂 src/                 # Source code
- ┃ ┣ 📂 public/             # Static files
- ┃ ┗ 📜 Dockerfile.dev      # Development Dockerfile
- ┣ 📂 server/                # Node.js backend application
- ┃ ┣ 📂 src/                # Source code
- ┃ ┣ 📂 migrations/         # Database migrations
- ┃ ┗ 📜 Dockerfile.dev      # Development Dockerfile
- ┗ 📜 docker-compose.yml    # Docker Compose configuration
-```
+┣ 📂 client/ # React frontend
+┃ ┣ 📂 src/ # Source code
+┃ ┣ 📂 public/ # Static assets
+┃ ┗ 📜 Dockerfile
+┣ 📂 server/ # Node.js backend
+┃ ┣ 📂 src/ # Source code
+┃ ┣ 📂 migrations/ # DB migrations
+┃ ┗ 📜 Dockerfile
+┗ 📜 docker-compose.yml
+\`\`\`
 
-### Environment Variables
+### 🛠️ Development Commands
 
-Required environment variables are documented in:
+\`\`\`bash
 
-- `server/.env.example`
-- `client/.env.example`
+# Start services
 
-### Working with Docker
-
-Start all services:
-
-```bash
 docker-compose up
-```
 
-Start specific service:
+# Run migrations
 
-```bash
-docker-compose up <service-name>
-```
-
-Rebuild containers:
-
-```bash
-docker-compose up --build
-```
-
-View logs:
-
-```bash
-docker-compose logs -f [service-name]
-```
-
-### Database Migrations
-
-Run migrations:
-
-```bash
 docker-compose exec server npm run migrate up
-```
 
-Create new migration:
+# Run tests
 
-```bash
-docker-compose exec server npm run migrate create my_migration_name
-```
-
-### Testing
-
-Run tests:
-
-```bash
-# Client tests
 docker-compose exec client npm test
-
-# Server tests
 docker-compose exec server npm test
-```
 
-### Code Quality
+# Code quality
 
-Run linting:
-
-```bash
-# Client
 docker-compose exec client npm run lint
-
-# Server
-docker-compose exec server npm run lint
-```
-
-Format code:
-
-```bash
-# Client
-docker-compose exec client npm run format
-
-# Server
 docker-compose exec server npm run format
-```
+\`\`\`
 
-## 🔐 Security Features
+## ⚡ Performance Features
 
-- 🛡️ Content Security Policy (CSP) headers
-- 🚫 Rate limiting for API and WebRTC endpoints
-- 🧹 Input sanitization
-- 🔒 Secure session management with Redis
-- 🌐 CORS protection
-- 🛑 XSS prevention
-- 🔏 Secure WebRTC configurations
+### 🎯 Optimization Stack
 
-## ⚡ Performance Optimizations
-
-- 🔄 Connection pooling for database
+- 📊 Connection pooling
 - 💾 Redis caching
-- 📊 Media quality management
-- 🖼️ Image optimization
-- 🖥️ Hardware acceleration support
-- 🎤 Echo cancellation and noise suppression
-- 📡 WebRTC bandwidth adaptation
-- 📈 Automatic quality scaling
-- 🌐 Network resilience with ICE/TURN/STUN configurations
+- 🎥 Media optimization
+- 🖼️ Image processing
+- 🎮 Hardware acceleration
+- 🎤 Audio enhancement
+- 📡 Network adaptation
 
-### WebRTC Quality of Service
+### 📈 Quality Management
 
-```
-┌─────────────────┐         ┌───────────────────┐
-│                 │         │                   │
-│ Network Monitor │────────▶│  Quality Adapter  │
-│                 │         │                   │
-└────────┬────────┘         └─────────┬─────────┘
-         │                            │
-         │                  ┌─────────┴─────────┐
-         │                  │                   │
-    ┌────┴────┐      ┌─────┴─────┐     ┌──────┴─────┐
-    │ Network │      │   Video   │     │   Audio    │
-    │ Stats   │      │  Encoder  │     │  Encoder   │
-    └────┬────┘      └─────┬─────┘     └──────┬─────┘
-         │                 │                   │
-         │           ┌─────┴───────────────────┘
-         │           │
-         └───────────┤   Peer Connection
-                     │   [WebRTC Stream]
-                     └───────────────────
-```
+\`\`\`
+┌─────────────┐ ┌─────────────┐
+│ Network │─────▶│ Quality │
+│ Monitor │ │ Adapter │
+└─────────────┘ └─────────────┘
+│ │
+▼ ▼
+┌─────────────┐ ┌─────────────┐
+│ Stream │◀─────│ Media │
+│ Optimizer │ │ Encoder │
+└─────────────┘ └─────────────┘
+\`\`\`
 
-## 📝 Deployment
+## 📦 Deployment
 
-### Production Setup
+### 🚀 Production Setup
 
-```bash
-# Build and start production containers
+\`\`\`bash
+
+# Launch production
+
 docker-compose -f docker-compose.prod.yml up -d
 
-# Monitor production logs
+# Monitor logs
+
 docker-compose -f docker-compose.prod.yml logs -f
-```
+\`\`\`
 
-### SSL Configuration
+### 📈 Scaling Strategy
 
-For production deployment, SSL certificates are required for WebRTC to work properly:
-
-1. Obtain SSL certificates (e.g., from Let's Encrypt)
-2. Place them in the `docker/nginx/certs` directory
-3. Update the nginx configuration in `docker/nginx/nginx.conf`
-
-### Scaling
-
-The application supports horizontal scaling:
-
-- WebSocket servers with Redis pub/sub
-- Media servers with load balancing
-- Database replication for read scaling
-
-### Monitoring
-
-- Prometheus metrics for system monitoring
-- Grafana dashboards for visualization
-- WebRTC statistics monitoring
-- Error tracking and alerting
+- 🔄 Horizontal scaling
+- ⚖️ Load balancing
+- 📊 Database replication
+- 🔍 Performance monitoring
 
 ## 🤝 Contributing
 
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add some amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
+1. 🍴 Fork repository
+2. 🌿 Create feature branch
+3. 💻 Commit changes
+4. 🚀 Push to branch
+5. 📬 Open Pull Request
 
-## 📝 License
+## 📄 License
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+---
+
+<div align="center">
+Made with ❤️ by the WebRTC Team
+</div>
