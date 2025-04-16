@@ -17,15 +17,15 @@ A secure and performant video counseling platform built with React, Node.js, and
 ### WebRTC Communication Flow
 
 ```mermaid
-graph LR
-    A[Client A] -->|1. Signaling| B[Signaling Server]
-    C[Client B] -->|1. Signaling| B
+flowchart LR
+    A(Client A) -->|1. Signaling| B(Signaling Server)
+    C(Client B) -->|1. Signaling| B
     B -->|2. Exchange SDP/ICE| A
     B -->|2. Exchange SDP/ICE| C
     A <-->|3. P2P Connection| C
-    D[STUN/TURN Server] -->|4. NAT Traversal| A
+    D(STUN/TURN Server) -->|4. NAT Traversal| A
     D -->|4. NAT Traversal| C
-    E[Media Server] -->|5. Recording/Broadcasting| A
+    E(Media Server) -->|5. Recording/Broadcasting| A
     E -->|5. Recording/Broadcasting| C
 ```
 
