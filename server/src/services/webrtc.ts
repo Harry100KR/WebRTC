@@ -1,119 +1,116 @@
 import { Server, Socket } from 'socket.io';
+import { DefaultEventsMap } from 'socket.io/dist/typed-events';
+import { pool } from '../config/database';
 import jwt from 'jsonwebtoken';
-import { db } from '../config/database';
 
 interface User {
-  id: string;
+  id: number;
   email: string;
   role: string;
 }
 
 interface AuthenticatedSocket extends Socket {
   user?: User;
+  currentRoom?: string;
 }
 
-export const setupWebRTC = (io: Server) => {
-  // Authentication middleware
-  io.use(async (socket: AuthenticatedSocket, next) => {
-    try {
-      const token = socket.handshake.auth.token;
-      if (!token) {
-        return next(new Error('Authentication required'));
-      }
+export class WebRTCService {
+  private io: Server;
+  private rooms: Map<string, Set<string>>;
 
-      const decoded = jwt.verify(token, process.env.JWT_SECRET!) as User;
-      socket.user = decoded;
-      next();
-    } catch (error) {
-      next(new Error('Authentication failed'));
-    }
-  });
+  constructor(io: Server) {
+    this.io = io;
+    this.rooms = new Map();
+    this.setupSocketHandlers();
+  }
 
-  io.on('connection', (socket: AuthenticatedSocket) => {
-    console.log('User connected:', socket.user?.email);
+  public getRoomCount(): number {
+    return this.rooms.size;
+  }
 
-    // Join room
-    socket.on('join-room', async (roomId: string) => {
+  private setupSocketHandlers() {
+    this.io.use((socket: Socket, next) => {
       try {
-        // Verify room access
-        const query = `
-          SELECT id FROM sessions
-          WHERE id = $1 AND (counselor_id = $2 OR client_id = $2)
-          AND status = 'in-progress'
-        `;
-        const result = await db.query(query, [roomId, socket.user?.id]);
-
-        if (result.rows.length === 0) {
-          socket.emit('error', 'Access to room denied');
-          return;
+        const token = socket.handshake.auth.token;
+        if (!token) {
+          return next(new Error('Authentication required'));
         }
 
-        // Leave previous rooms
-        socket.rooms.forEach(room => {
-          if (room !== socket.id) {
-            socket.leave(room);
+        const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key') as User;
+        (socket as AuthenticatedSocket).user = decoded;
+        next();
+      } catch (error) {
+        next(new Error('Invalid token'));
+      }
+    });
+
+    this.io.on('connection', (socket: AuthenticatedSocket) => {
+      console.log('User connected:', socket.user?.email);
+
+      socket.on('join-room', async (roomId: string) => {
+        try {
+          if (!socket.user) {
+            socket.emit('error', { message: 'Not authenticated' });
+            return;
           }
-        });
 
-        // Join new room
-        socket.join(roomId);
-        socket.emit('room-joined', roomId);
+          // Verify user has access to this room
+          const query = `
+            SELECT * FROM sessions 
+            WHERE id = $1 
+            AND (counselor_id = $2 OR client_id = $2)
+            AND status = 'in-progress'
+          `;
+          const result = await pool.query(query, [roomId, socket.user.id]);
 
-        // Notify others in room
-        socket.to(roomId).emit('user-connected', {
-          userId: socket.user?.id,
-          email: socket.user?.email
-        });
-      } catch (error) {
-        console.error('Error joining room:', error);
-        socket.emit('error', 'Failed to join room');
-      }
-    });
+          if (result.rows.length === 0) {
+            socket.emit('error', { message: 'Access denied to this room' });
+            return;
+          }
 
-    // Handle WebRTC signaling
-    socket.on('signal', async (data: { signal: any; roomId: string }) => {
-      try {
-        // Verify user is in the room
-        if (!socket.rooms.has(data.roomId)) {
-          socket.emit('error', 'Not in room');
-          return;
-        }
+          // Leave previous rooms
+          for (const room of socket.rooms) {
+            if (room !== socket.id) {
+              socket.leave(room);
+            }
+          }
 
-        // Broadcast signal to others in room
-        socket.to(data.roomId).emit('signal', {
-          signal: data.signal,
-          from: socket.user?.id
-        });
-      } catch (error) {
-        console.error('Signaling error:', error);
-        socket.emit('error', 'Signaling failed');
-      }
-    });
+          socket.join(roomId);
+          socket.currentRoom = roomId;
+          socket.to(roomId).emit('user-connected', socket.user.id);
 
-    // Handle screen sharing
-    socket.on('screen-share-started', (roomId: string) => {
-      socket.to(roomId).emit('screen-share-started', socket.user?.id);
-    });
+          // Update room participants
+          if (!this.rooms.has(roomId)) {
+            this.rooms.set(roomId, new Set());
+          }
+          this.rooms.get(roomId)?.add(socket.id);
 
-    socket.on('screen-share-stopped', (roomId: string) => {
-      socket.to(roomId).emit('screen-share-stopped', socket.user?.id);
-    });
+          socket.on('screen-share-start', () => {
+            if (socket.currentRoom && socket.user) {
+              socket.to(socket.currentRoom).emit('screen-share-started', socket.user.id);
+            }
+          });
 
-    // Handle disconnection
-    socket.on('disconnect', () => {
-      console.log('User disconnected:', socket.user?.email);
-      // Notify all rooms the user was in
-      socket.rooms.forEach(roomId => {
-        if (roomId !== socket.id) {
-          socket.to(roomId).emit('user-disconnected', socket.user?.id);
+          socket.on('screen-share-stop', () => {
+            if (socket.currentRoom && socket.user) {
+              socket.to(socket.currentRoom).emit('screen-share-stopped', socket.user.id);
+            }
+          });
+
+          socket.on('disconnect', () => {
+            if (socket.currentRoom && socket.user) {
+              this.rooms.get(socket.currentRoom)?.delete(socket.id);
+              if (this.rooms.get(socket.currentRoom)?.size === 0) {
+                this.rooms.delete(socket.currentRoom);
+              }
+              socket.to(socket.currentRoom).emit('user-disconnected', socket.user.id);
+            }
+          });
+        } catch (error) {
+          console.error('Error joining room:', error);
+          socket.emit('error', { message: 'Failed to join room' });
         }
       });
     });
-
-    // Handle errors
-    socket.on('error', (error: Error) => {
-      console.error('Socket error:', error);
-      socket.emit('error', 'An error occurred');
-    });
-  });
-}; 
+  }
+} 

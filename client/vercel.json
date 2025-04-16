@@ -1,0 +1,28 @@
+{
+  "version": 2,
+  "buildCommand": "npm run build",
+  "outputDirectory": "build",
+  "env": {
+    "REACT_APP_API_URL": "https://server-mcvlye2tf-harrybaeks-projects.vercel.app/api",
+    "REACT_APP_SOCKET_URL": "https://server-mcvlye2tf-harrybaeks-projects.vercel.app",
+    "NODE_ENV": "production"
+  },
+  "routes": [
+    {
+      "src": "/static/(.*)",
+      "dest": "/static/$1"
+    },
+    {
+      "src": "/favicon.ico",
+      "dest": "/favicon.ico"
+    },
+    {
+      "src": "/manifest.json",
+      "dest": "/manifest.json"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/index.html"
+    }
+  ]
+} 

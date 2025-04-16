@@ -6,16 +6,16 @@ import { config } from 'dotenv';
 config();
 
 // PostgreSQL connection pool configuration
-export const pgPool = new Pool({
-  user: process.env.POSTGRES_USER || 'postgres',
-  password: process.env.POSTGRES_PASSWORD,
-  host: process.env.DB_HOST || 'localhost',
-  database: process.env.DB_NAME || 'webrtc_db',
+export const pool = new Pool({
+  user: process.env.DB_USER,
+  host: process.env.DB_HOST,
+  database: process.env.DB_NAME,
+  password: process.env.DB_PASSWORD,
   port: parseInt(process.env.DB_PORT || '5432'),
-  max: 20, // Maximum number of clients in the pool
-  idleTimeoutMillis: 30000,
-  connectionTimeoutMillis: 2000,
 });
+
+// Export for use in other files
+export default pool;
 
 // Fallback in-memory cache for development
 const memoryCache = new NodeCache({
@@ -85,7 +85,7 @@ export const cacheMiddleware = (duration: number) => {
 // Database health check
 export const checkDatabaseConnection = async () => {
   try {
-    const client = await pgPool.connect();
+    const client = await pool.connect();
     await client.query('SELECT NOW()');
     client.release();
     console.log('Database connection successful');
@@ -121,7 +121,7 @@ export const initializeDatabaseConnections = async () => {
   await checkDatabaseConnection();
   await checkRedisConnection();
   
-  pgPool.on('error', (err) => {
+  pool.on('error', (err) => {
     console.error('Unexpected error on idle client', err);
   });
   

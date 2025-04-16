@@ -1,6 +1,11 @@
 import { Request, Response } from 'express';
-import { pgPool as db } from '../config/database';
+import { pool } from '../config/database';
 import logger from '../utils/logger';
+import { AuthRequest } from '../middleware/auth';
+
+interface PortfolioInstrument {
+  instrument_id: string;
+}
 
 export class PortfolioController {
   // Get all portfolios for the authenticated user
@@ -9,7 +14,7 @@ export class PortfolioController {
       const userId = req.user?.id;
 
       // Get all portfolios
-      const portfoliosResult = await db.query(
+      const portfoliosResult = await pool.query(
         `SELECT p.id, p.name, p.description, p.is_public, p.created_at, p.updated_at
          FROM portfolios p
          WHERE p.user_id = $1
@@ -21,14 +26,14 @@ export class PortfolioController {
 
       // For each portfolio, get its instruments
       for (const portfolio of portfolios) {
-        const instrumentsResult = await db.query(
+        const instrumentsResult = await pool.query(
           `SELECT pi.instrument_id
            FROM portfolio_instruments pi
            WHERE pi.portfolio_id = $1`,
           [portfolio.id]
         );
         
-        portfolio.instruments = instrumentsResult.rows.map(row => row.instrument_id);
+        portfolio.instruments = instrumentsResult.rows.map((row: PortfolioInstrument) => row.instrument_id);
       }
 
       res.status(200).json(portfolios);
@@ -45,7 +50,7 @@ export class PortfolioController {
       const userId = req.user?.id;
 
       // Get the portfolio
-      const portfolioResult = await db.query(
+      const portfolioResult = await pool.query(
         `SELECT p.id, p.name, p.description, p.is_public, p.created_at, p.updated_at
          FROM portfolios p
          WHERE p.id = $1 AND (p.user_id = $2 OR p.is_public = true)`,
@@ -60,14 +65,14 @@ export class PortfolioController {
       const portfolio = portfolioResult.rows[0];
 
       // Get portfolio instruments
-      const instrumentsResult = await db.query(
+      const instrumentsResult = await pool.query(
         `SELECT pi.instrument_id
          FROM portfolio_instruments pi
          WHERE pi.portfolio_id = $1`,
         [portfolio.id]
       );
       
-      portfolio.instruments = instrumentsResult.rows.map(row => row.instrument_id);
+      portfolio.instruments = instrumentsResult.rows.map((row: PortfolioInstrument) => row.instrument_id);
 
       res.status(200).json(portfolio);
     } catch (error) {
@@ -83,10 +88,10 @@ export class PortfolioController {
       const userId = req.user?.id;
 
       // Begin transaction
-      await db.query('BEGIN');
+      await pool.query('BEGIN');
 
       // Create portfolio
-      const portfolioResult = await db.query(
+      const portfolioResult = await pool.query(
         `INSERT INTO portfolios (name, description, user_id, is_public)
          VALUES ($1, $2, $3, $4)
          RETURNING id, name, description, is_public, created_at, updated_at`,
@@ -101,7 +106,7 @@ export class PortfolioController {
           return `(${portfolio.id}, ${instrumentId})`;
         }).join(', ');
 
-        await db.query(
+        await pool.query(
           `INSERT INTO portfolio_instruments (portfolio_id, instrument_id)
            VALUES ${values}
            ON CONFLICT (portfolio_id, instrument_id) DO NOTHING`
@@ -112,12 +117,12 @@ export class PortfolioController {
       portfolio.instruments = instruments || [];
 
       // Commit transaction
-      await db.query('COMMIT');
+      await pool.query('COMMIT');
 
       res.status(201).json(portfolio);
     } catch (error) {
       // Rollback transaction on error
-      await db.query('ROLLBACK');
+      await pool.query('ROLLBACK');
       logger.error('Error in createPortfolio:', error);
       res.status(500).json({ message: 'Failed to create portfolio' });
     }
@@ -131,7 +136,7 @@ export class PortfolioController {
       const userId = req.user?.id;
 
       // Check if portfolio exists and belongs to user
-      const portfolioCheck = await db.query(
+      const portfolioCheck = await pool.query(
         'SELECT id FROM portfolios WHERE id = $1 AND user_id = $2',
         [id, userId]
       );
@@ -142,7 +147,7 @@ export class PortfolioController {
       }
 
       // Begin transaction
-      await db.query('BEGIN');
+      await pool.query('BEGIN');
 
       // Prepare update fields
       const updateFields = [];
@@ -175,12 +180,12 @@ export class PortfolioController {
           RETURNING id, name, description, is_public, created_at, updated_at
         `;
         
-        const portfolioResult = await db.query(updateQuery, values);
+        const portfolioResult = await pool.query(updateQuery, values);
         
         // Update instruments if provided
         if (instruments !== undefined) {
           // First delete all existing instruments
-          await db.query(
+          await pool.query(
             'DELETE FROM portfolio_instruments WHERE portfolio_id = $1',
             [id]
           );
@@ -191,7 +196,7 @@ export class PortfolioController {
               return `(${id}, ${instrumentId})`;
             }).join(', ');
             
-            await db.query(
+            await pool.query(
               `INSERT INTO portfolio_instruments (portfolio_id, instrument_id)
                VALUES ${instrumentValues}
                ON CONFLICT (portfolio_id, instrument_id) DO NOTHING`
@@ -200,42 +205,42 @@ export class PortfolioController {
         }
         
         // Get updated instruments
-        const instrumentsResult = await db.query(
+        const instrumentsResult = await pool.query(
           `SELECT instrument_id FROM portfolio_instruments WHERE portfolio_id = $1`,
           [id]
         );
         
         const portfolio = portfolioResult.rows[0];
-        portfolio.instruments = instrumentsResult.rows.map(row => row.instrument_id);
+        portfolio.instruments = instrumentsResult.rows.map((row: PortfolioInstrument) => row.instrument_id);
         
         // Commit transaction
-        await db.query('COMMIT');
+        await pool.query('COMMIT');
         
         res.status(200).json(portfolio);
       } else {
         // No fields to update, just return the portfolio with instruments
-        await db.query('ROLLBACK'); // No need for transaction
+        await pool.query('ROLLBACK'); // No need for transaction
         
-        const portfolioResult = await db.query(
+        const portfolioResult = await pool.query(
           `SELECT p.id, p.name, p.description, p.is_public, p.created_at, p.updated_at
            FROM portfolios p
            WHERE p.id = $1`,
           [id]
         );
         
-        const instrumentsResult = await db.query(
+        const instrumentsResult = await pool.query(
           `SELECT instrument_id FROM portfolio_instruments WHERE portfolio_id = $1`,
           [id]
         );
         
         const portfolio = portfolioResult.rows[0];
-        portfolio.instruments = instrumentsResult.rows.map(row => row.instrument_id);
+        portfolio.instruments = instrumentsResult.rows.map((row: PortfolioInstrument) => row.instrument_id);
         
         res.status(200).json(portfolio);
       }
     } catch (error) {
       // Rollback transaction on error
-      await db.query('ROLLBACK');
+      await pool.query('ROLLBACK');
       logger.error('Error in updatePortfolio:', error);
       res.status(500).json({ message: 'Failed to update portfolio' });
     }
@@ -248,7 +253,7 @@ export class PortfolioController {
       const userId = req.user?.id;
 
       // Check if portfolio exists and belongs to user
-      const portfolioCheck = await db.query(
+      const portfolioCheck = await pool.query(
         'SELECT id FROM portfolios WHERE id = $1 AND user_id = $2',
         [id, userId]
       );
@@ -259,7 +264,7 @@ export class PortfolioController {
       }
 
       // Delete portfolio (cascade will handle deleting related records)
-      await db.query('DELETE FROM portfolios WHERE id = $1', [id]);
+      await pool.query('DELETE FROM portfolios WHERE id = $1', [id]);
 
       res.status(200).json({ message: 'Portfolio deleted successfully' });
     } catch (error) {
@@ -275,7 +280,7 @@ export class PortfolioController {
       const userId = req.user?.id;
 
       // Check if portfolio exists and belongs to user
-      const portfolioCheck = await db.query(
+      const portfolioCheck = await pool.query(
         'SELECT id FROM portfolios WHERE id = $1 AND user_id = $2',
         [id, userId]
       );
@@ -286,7 +291,7 @@ export class PortfolioController {
       }
 
       // Check if instrument exists
-      const instrumentCheck = await db.query(
+      const instrumentCheck = await pool.query(
         'SELECT id FROM financial_instruments WHERE id = $1',
         [instrumentId]
       );
@@ -297,7 +302,7 @@ export class PortfolioController {
       }
 
       // Add instrument to portfolio
-      await db.query(
+      await pool.query(
         `INSERT INTO portfolio_instruments (portfolio_id, instrument_id)
          VALUES ($1, $2)
          ON CONFLICT (portfolio_id, instrument_id) DO NOTHING`,
@@ -318,7 +323,7 @@ export class PortfolioController {
       const userId = req.user?.id;
 
       // Check if portfolio exists and belongs to user
-      const portfolioCheck = await db.query(
+      const portfolioCheck = await pool.query(
         'SELECT id FROM portfolios WHERE id = $1 AND user_id = $2',
         [id, userId]
       );
@@ -329,7 +334,7 @@ export class PortfolioController {
       }
 
       // Remove instrument from portfolio
-      await db.query(
+      await pool.query(
         'DELETE FROM portfolio_instruments WHERE portfolio_id = $1 AND instrument_id = $2',
         [id, instrumentId]
       );

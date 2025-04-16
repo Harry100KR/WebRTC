@@ -1,9 +1,18 @@
 import express, { Request, Response } from 'express';
-import { cacheMiddleware, pgPool } from '../config/database';
+import { pool, cacheMiddleware } from '../config/database';
 import { validateRequest } from '../middleware/validateRequest';
 import { body, query } from 'express-validator';
 
 const router = express.Router();
+
+interface Product {
+  id: string;
+  name: string;
+  description: string;
+  price: number;
+  created_at: Date;
+  updated_at: Date;
+}
 
 // Validation middleware for search parameters
 const searchValidation = [
@@ -20,7 +29,7 @@ const searchValidation = [
 // Get all categories
 router.get('/categories', cacheMiddleware(300), async (req: Request, res: Response) => {
   try {
-    const result = await pgPool.query(
+    const result = await pool.query(
       'SELECT * FROM product_categories ORDER BY name'
     );
     res.json(result.rows);
@@ -107,15 +116,19 @@ router.get('/', searchValidation, cacheMiddleware(60), async (req: Request, res:
     console.log('Executing query:', query);
     console.log('Query parameters:', params);
 
-    const result = await pgPool.query(query, params);
+    const result = await pool.query(query, params);
     
     const totalCount = result.rows.length > 0 ? Number(result.rows[0].total_count) : 0;
     const totalPages = Math.ceil(totalCount / Number(limit));
 
     res.json({
-      data: result.rows.map(row => ({
-        ...row,
-        total_count: undefined // Remove count from individual items
+      data: result.rows.map((row: Product) => ({
+        id: row.id,
+        name: row.name,
+        description: row.description,
+        price: row.price,
+        created_at: row.created_at,
+        updated_at: row.updated_at
       })),
       pagination: {
         total: totalCount,
@@ -137,7 +150,7 @@ router.get('/', searchValidation, cacheMiddleware(60), async (req: Request, res:
 // Get product by ID
 router.get('/:id', cacheMiddleware(300), async (req: Request, res: Response) => {
   try {
-    const result = await pgPool.query(`
+    const result = await pool.query(`
       SELECT 
         f.*,
         c.name as category_name,
@@ -192,7 +205,7 @@ router.post('/', createProductValidation, async (req: Request, res: Response) =>
       metadata
     } = req.body;
 
-    const result = await pgPool.query(`
+    const result = await pool.query(`
       INSERT INTO financial_instruments (
         name, description, category_id, interest_rate, term,
         minimum_investment, risk_level, currency, features,

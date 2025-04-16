@@ -5,7 +5,8 @@ import cookieParser from 'cookie-parser';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import { config } from 'dotenv';
-import WebRTCService from './services/webrtcService';
+import { Server } from 'socket.io';
+import { WebRTCService } from './services/webrtc';
 import morgan from 'morgan';
 import winston from 'winston';
 import { errorHandler } from './middleware/errorHandler';
@@ -20,7 +21,7 @@ import recordingsRouter from './routes/recordings';
 // Type declarations
 declare module 'express' {
   interface Request {
-    cookies: any;
+    // cookies: any;
     user?: {
       id: number;
       email: string;
@@ -48,8 +49,15 @@ const logger = winston.createLogger({
 const app = express();
 const server = http.createServer(app);
 
-// Initialize WebRTC service
-const webrtcService = new WebRTCService(server, logger);
+const io = new Server(server, {
+  cors: {
+    origin: process.env.CLIENT_URL || 'http://localhost:3000',
+    methods: ['GET', 'POST'],
+    credentials: true
+  }
+});
+
+const webrtcService = new WebRTCService(io);
 
 // Logging
 if (process.env.NODE_ENV === 'production') {

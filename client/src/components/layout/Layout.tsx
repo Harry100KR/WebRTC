@@ -25,6 +25,7 @@ import {
 import { RootState } from '../../store';
 import { logout } from '../../store/slices/authSlice';
 import SearchBar from '../common/SearchBar';
+import { Navigation } from './Navigation';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -67,163 +68,19 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
-      <AppBar position="static">
-        <Toolbar>
-          {isMobile && (
-            <IconButton
-              edge="start"
-              color="inherit"
-              aria-label="menu"
-              onClick={handleMobileMenu}
-            >
-              <MenuIcon />
-            </IconButton>
-          )}
-          
-          <Typography
-            variant="h6"
-            component="div"
-            sx={{ flexGrow: 1, cursor: 'pointer' }}
-            onClick={() => navigate('/')}
-          >
-            Financial Products
-          </Typography>
-
-          {!isMobile && <SearchBar />}
-
-          {user && !isMobile && (
-            <>
-              <Button
-                color="inherit"
-                startIcon={<VideoCallIcon />}
-                onClick={() => navigate('/counseling')}
-                sx={{ mr: 2 }}
-              >
-                Video Counseling
-              </Button>
-              <Button
-                color="inherit"
-                startIcon={<FolderIcon />}
-                onClick={() => navigate('/portfolios')}
-                sx={{ mr: 2 }}
-              >
-                Portfolios
-              </Button>
-              <Button
-                color="inherit"
-                startIcon={<StarIcon />}
-                onClick={() => navigate('/watchlists')}
-                sx={{ mr: 2 }}
-              >
-                Watchlists
-              </Button>
-            </>
-          )}
-
-          {user ? (
-            <>
-              <IconButton
-                size="large"
-                aria-label="account of current user"
-                aria-controls="menu-appbar"
-                aria-haspopup="true"
-                onClick={handleMenu}
-                color="inherit"
-              >
-                <AccountCircle />
-              </IconButton>
-              <Menu
-                id="menu-appbar"
-                anchorEl={anchorEl}
-                anchorOrigin={{
-                  vertical: 'top',
-                  horizontal: 'right',
-                }}
-                keepMounted
-                transformOrigin={{
-                  vertical: 'top',
-                  horizontal: 'right',
-                }}
-                open={Boolean(anchorEl)}
-                onClose={handleClose}
-              >
-                <MenuItem onClick={handleProfile}>Profile</MenuItem>
-                <MenuItem onClick={() => { handleClose(); navigate('/portfolios'); }}>My Portfolios</MenuItem>
-                <MenuItem onClick={() => { handleClose(); navigate('/watchlists'); }}>My Watchlists</MenuItem>
-                <MenuItem onClick={handleLogout}>Logout</MenuItem>
-              </Menu>
-            </>
-          ) : (
-            !isMobile && (
-              <Box>
-                <Button color="inherit" onClick={() => navigate('/login')}>
-                  Login
-                </Button>
-                <Button color="inherit" onClick={() => navigate('/register')}>
-                  Register
-                </Button>
-              </Box>
-            )
-          )}
-        </Toolbar>
-      </AppBar>
-
-      {/* Mobile Menu */}
-      <Menu
-        anchorEl={mobileMenuAnchorEl}
-        open={Boolean(mobileMenuAnchorEl)}
-        onClose={handleClose}
-      >
-        {user ? (
-          <>
-            <MenuItem onClick={() => { handleClose(); navigate('/counseling'); }}>
-              Video Counseling
-            </MenuItem>
-            <MenuItem onClick={() => { handleClose(); navigate('/portfolios'); }}>
-              My Portfolios
-            </MenuItem>
-            <MenuItem onClick={() => { handleClose(); navigate('/watchlists'); }}>
-              My Watchlists
-            </MenuItem>
-            <MenuItem onClick={handleProfile}>Profile</MenuItem>
-            <MenuItem onClick={handleLogout}>Logout</MenuItem>
-          </>
-        ) : (
-          <>
-            <MenuItem onClick={() => { handleClose(); navigate('/login'); }}>
-              Login
-            </MenuItem>
-            <MenuItem onClick={() => { handleClose(); navigate('/register'); }}>
-              Register
-            </MenuItem>
-          </>
-        )}
-        <MenuItem>
-          <SearchBar />
-        </MenuItem>
-      </Menu>
-
-      <Container component="main" sx={{ flex: 1, py: 3 }}>
-        {children}
-      </Container>
-
+      <Navigation />
       <Box
-        component="footer"
+        component="main"
         sx={{
-          py: 3,
-          px: 2,
-          mt: 'auto',
-          backgroundColor: (theme) =>
-            theme.palette.mode === 'light'
-              ? theme.palette.grey[200]
-              : theme.palette.grey[800],
+          flexGrow: 1,
+          width: '100%',
+          backgroundColor: theme.palette.background.default,
+          pt: { xs: 2, sm: 3 },
+          pb: { xs: 6, sm: 8 },
+          px: isMobile ? 1 : 2,
         }}
       >
-        <Container maxWidth="sm">
-          <Typography variant="body2" color="text.secondary" align="center">
-            © {new Date().getFullYear()} Financial Products. All rights reserved.
-          </Typography>
-        </Container>
+        {children}
       </Box>
     </Box>
   );

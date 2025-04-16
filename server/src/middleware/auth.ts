@@ -1,19 +1,17 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
+import { ParamsDictionary } from 'express-serve-static-core';
+import { ParsedQs } from 'qs';
 
-interface AuthRequest extends Request {
+export interface AuthRequest extends Request<ParamsDictionary, any, any, ParsedQs, Record<string, any>> {
   user?: {
-    id: string;
+    id: number;
     email: string;
     role: string;
   };
 }
 
-export const authMiddleware = async (
-  req: AuthRequest,
-  res: Response,
-  next: NextFunction
-) => {
+export const authMiddleware = (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const token = req.cookies.token || req.headers.authorization?.split(' ')[1];
     
@@ -21,8 +19,8 @@ export const authMiddleware = async (
       return res.status(401).json({ error: 'Authentication required' });
     }
 
-    const decoded = jwt.verify(token, process.env.JWT_SECRET!) as {
-      id: string;
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key') as {
+      id: number;
       email: string;
       role: string;
     };
@@ -30,11 +28,7 @@ export const authMiddleware = async (
     req.user = decoded;
     next();
   } catch (error) {
-    if (error instanceof jwt.JsonWebTokenError) {
-      return res.status(401).json({ error: 'Invalid token' });
-    }
-    console.error('Auth error:', error);
-    res.status(500).json({ error: 'Authentication failed' });
+    res.status(401).json({ error: 'Invalid token' });
   }
 };
 
@@ -67,4 +61,9 @@ export const requireRole = (roles: string[]) => {
 
     next();
   };
+};
+
+export const validateRecordingAccess = async (req: AuthRequest, res: Response, next: NextFunction) => {
+  // Add your recording access validation logic here
+  next();
 }; 

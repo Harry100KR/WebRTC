@@ -2,30 +2,29 @@
   "version": 2,
   "builds": [
     {
-      "src": "server/package.json",
-      "use": "@vercel/node",
-      "config": {
-        "includeFiles": ["dist/**", "node_modules/**"]
-      }
-    },
-    {
       "src": "client/package.json",
       "use": "@vercel/static-build",
-      "config": { "distDir": "build" }
+      "config": {
+        "distDir": "build",
+        "buildCommand": "cd client && npm install --legacy-peer-deps && CI=false npm run build"
+      }
     }
   ],
   "routes": [
     {
-      "src": "/api/(.*)",
-      "dest": "/server/dist/index.js"
+      "handle": "filesystem"
     },
     {
-       "src": "/static/(.*)",
-       "dest": "/client/build/static/$1"
+      "src": "/static/(.*)",
+      "dest": "/client/build/static/$1"
     },
     {
-       "src": "/(.*)",
-       "dest": "/client/build/index.html"
+      "src": "/(.*)",
+      "dest": "/client/build/index.html"
     }
-  ]
+  ],
+  "env": {
+    "NODE_ENV": "production",
+    "CI": "false"
+  }
 } 

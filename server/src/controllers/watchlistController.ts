@@ -1,9 +1,7 @@
 import { Request, Response } from 'express';
-import { Pool } from 'pg';
+import { pool } from '../config/database';
+import { AuthRequest } from '../middleware/auth';
 import { Logger } from 'winston';
-
-// Import the pool instance instead of default export
-import { pgPool as db } from '../config/database';
 import logger from '../utils/logger';
 
 // Define interface for database row types
@@ -18,7 +16,7 @@ export class WatchlistController {
       const userId = req.user?.id;
 
       // Get all watchlists
-      const watchlistsResult = await db.query(
+      const watchlistsResult = await pool.query(
         `SELECT w.id, w.name, w.description, w.created_at, w.updated_at
          FROM watchlists w
          WHERE w.user_id = $1
@@ -30,7 +28,7 @@ export class WatchlistController {
 
       // For each watchlist, get its instruments
       for (const watchlist of watchlists) {
-        const instrumentsResult = await db.query(
+        const instrumentsResult = await pool.query(
           `SELECT wi.instrument_id
            FROM watchlist_instruments wi
            WHERE wi.watchlist_id = $1`,
@@ -54,7 +52,7 @@ export class WatchlistController {
       const userId = req.user?.id;
 
       // Get the watchlist
-      const watchlistResult = await db.query(
+      const watchlistResult = await pool.query(
         `SELECT w.id, w.name, w.description, w.created_at, w.updated_at
          FROM watchlists w
          WHERE w.id = $1 AND w.user_id = $2`,
@@ -69,7 +67,7 @@ export class WatchlistController {
       const watchlist = watchlistResult.rows[0];
 
       // Get watchlist instruments
-      const instrumentsResult = await db.query(
+      const instrumentsResult = await pool.query(
         `SELECT wi.instrument_id
          FROM watchlist_instruments wi
          WHERE wi.watchlist_id = $1`,
@@ -92,10 +90,10 @@ export class WatchlistController {
       const userId = req.user?.id;
 
       // Begin transaction
-      await db.query('BEGIN');
+      await pool.query('BEGIN');
 
       // Create watchlist
-      const watchlistResult = await db.query(
+      const watchlistResult = await pool.query(
         `INSERT INTO watchlists (name, description, user_id)
          VALUES ($1, $2, $3)
          RETURNING id, name, description, created_at, updated_at`,
@@ -110,7 +108,7 @@ export class WatchlistController {
           return `(${watchlist.id}, ${instrumentId})`;
         }).join(', ');
 
-        await db.query(
+        await pool.query(
           `INSERT INTO watchlist_instruments (watchlist_id, instrument_id)
            VALUES ${values}
            ON CONFLICT (watchlist_id, instrument_id) DO NOTHING`
@@ -121,12 +119,12 @@ export class WatchlistController {
       watchlist.instruments = instruments || [];
 
       // Commit transaction
-      await db.query('COMMIT');
+      await pool.query('COMMIT');
 
       res.status(201).json(watchlist);
     } catch (error) {
       // Rollback transaction on error
-      await db.query('ROLLBACK');
+      await pool.query('ROLLBACK');
       logger.error('Error in createWatchlist:', error);
       res.status(500).json({ message: 'Failed to create watchlist' });
     }
@@ -140,7 +138,7 @@ export class WatchlistController {
       const userId = req.user?.id;
 
       // Check if watchlist exists and belongs to user
-      const watchlistCheck = await db.query(
+      const watchlistCheck = await pool.query(
         'SELECT id FROM watchlists WHERE id = $1 AND user_id = $2',
         [id, userId]
       );
@@ -151,7 +149,7 @@ export class WatchlistController {
       }
 
       // Begin transaction
-      await db.query('BEGIN');
+      await pool.query('BEGIN');
 
       // Prepare update fields
       const updateFields = [];
@@ -179,12 +177,12 @@ export class WatchlistController {
           RETURNING id, name, description, created_at, updated_at
         `;
         
-        const watchlistResult = await db.query(updateQuery, values);
+        const watchlistResult = await pool.query(updateQuery, values);
         
         // Update instruments if provided
         if (instruments !== undefined) {
           // First delete all existing instruments
-          await db.query(
+          await pool.query(
             'DELETE FROM watchlist_instruments WHERE watchlist_id = $1',
             [id]
           );
@@ -195,7 +193,7 @@ export class WatchlistController {
               return `(${id}, ${instrumentId})`;
             }).join(', ');
             
-            await db.query(
+            await pool.query(
               `INSERT INTO watchlist_instruments (watchlist_id, instrument_id)
                VALUES ${instrumentValues}
                ON CONFLICT (watchlist_id, instrument_id) DO NOTHING`
@@ -204,7 +202,7 @@ export class WatchlistController {
         }
         
         // Get updated instruments
-        const instrumentsResult = await db.query(
+        const instrumentsResult = await pool.query(
           `SELECT instrument_id FROM watchlist_instruments WHERE watchlist_id = $1`,
           [id]
         );
@@ -213,21 +211,21 @@ export class WatchlistController {
         watchlist.instruments = instrumentsResult.rows.map((row: WatchlistInstrumentRow) => row.instrument_id);
         
         // Commit transaction
-        await db.query('COMMIT');
+        await pool.query('COMMIT');
         
         res.status(200).json(watchlist);
       } else {
         // No fields to update, just return the watchlist with instruments
-        await db.query('ROLLBACK'); // No need for transaction
+        await pool.query('ROLLBACK'); // No need for transaction
         
-        const watchlistResult = await db.query(
+        const watchlistResult = await pool.query(
           `SELECT w.id, w.name, w.description, w.created_at, w.updated_at
            FROM watchlists w
            WHERE w.id = $1`,
           [id]
         );
         
-        const instrumentsResult = await db.query(
+        const instrumentsResult = await pool.query(
           `SELECT instrument_id FROM watchlist_instruments WHERE watchlist_id = $1`,
           [id]
         );
@@ -239,7 +237,7 @@ export class WatchlistController {
       }
     } catch (error) {
       // Rollback transaction on error
-      await db.query('ROLLBACK');
+      await pool.query('ROLLBACK');
       logger.error('Error in updateWatchlist:', error);
       res.status(500).json({ message: 'Failed to update watchlist' });
     }
@@ -252,7 +250,7 @@ export class WatchlistController {
       const userId = req.user?.id;
 
       // Check if watchlist exists and belongs to user
-      const watchlistCheck = await db.query(
+      const watchlistCheck = await pool.query(
         'SELECT id FROM watchlists WHERE id = $1 AND user_id = $2',
         [id, userId]
       );
@@ -263,7 +261,7 @@ export class WatchlistController {
       }
 
       // Delete watchlist (cascade will handle deleting related records)
-      await db.query('DELETE FROM watchlists WHERE id = $1', [id]);
+      await pool.query('DELETE FROM watchlists WHERE id = $1', [id]);
 
       res.status(200).json({ message: 'Watchlist deleted successfully' });
     } catch (error) {
@@ -279,7 +277,7 @@ export class WatchlistController {
       const userId = req.user?.id;
 
       // Check if watchlist exists and belongs to user
-      const watchlistCheck = await db.query(
+      const watchlistCheck = await pool.query(
         'SELECT id FROM watchlists WHERE id = $1 AND user_id = $2',
         [id, userId]
       );
@@ -290,7 +288,7 @@ export class WatchlistController {
       }
 
       // Check if instrument exists
-      const instrumentCheck = await db.query(
+      const instrumentCheck = await pool.query(
         'SELECT id FROM financial_instruments WHERE id = $1',
         [instrumentId]
       );
@@ -301,7 +299,7 @@ export class WatchlistController {
       }
 
       // Add instrument to watchlist
-      await db.query(
+      await pool.query(
         `INSERT INTO watchlist_instruments (watchlist_id, instrument_id)
          VALUES ($1, $2)
          ON CONFLICT (watchlist_id, instrument_id) DO NOTHING`,
@@ -322,7 +320,7 @@ export class WatchlistController {
       const userId = req.user?.id;
 
       // Check if watchlist exists and belongs to user
-      const watchlistCheck = await db.query(
+      const watchlistCheck = await pool.query(
         'SELECT id FROM watchlists WHERE id = $1 AND user_id = $2',
         [id, userId]
       );
@@ -333,7 +331,7 @@ export class WatchlistController {
       }
 
       // Remove instrument from watchlist
-      await db.query(
+      await pool.query(
         'DELETE FROM watchlist_instruments WHERE watchlist_id = $1 AND instrument_id = $2',
         [id, instrumentId]
       );
