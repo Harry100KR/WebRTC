@@ -74,26 +74,28 @@ graph LR
     A[Client A] --> B[Signaling Server]
     B --> C[Client B]
     A <-.-> C
-    style A fill:#93c5fd
-    style B fill:#fde68a
-    style C fill:#93c5fd
+    style A fill:#4ade80,stroke:#047857,stroke-width:2px
+    style B fill:#f59e0b,stroke:#b45309,stroke-width:2px
+    style C fill:#4ade80,stroke:#047857,stroke-width:2px
+    linkStyle 0,1 stroke:#6366f1,stroke-width:2px
+    linkStyle 2 stroke:#22c55e,stroke-width:2px,stroke-dasharray:5
 ```
 
 The WebRTC communication process follows these steps:
 
-1. **Signaling Phase**
+1. **Signaling Phase** 🔄
 
    - Clients establish initial connection with signaling server
    - Exchange of session parameters and capabilities
    - NAT traversal setup through STUN/TURN servers
 
-2. **Connection Establishment**
+2. **Connection Establishment** 🔗
 
    - SDP (Session Description Protocol) exchange
    - ICE (Interactive Connectivity Establishment) candidate sharing
    - Media codec negotiation and selection
 
-3. **Direct Communication**
+3. **Direct Communication** 🎥
    - Peer-to-peer connection establishment
    - Media stream initialization
    - Continuous quality monitoring and adaptation
@@ -145,10 +147,11 @@ graph TD
     A[Edge Security] --> B[Application Security]
     B --> C[Data Security]
     C --> D[Network Security]
-    style A fill:#fecaca
-    style B fill:#bfdbfe
-    style C fill:#bbf7d0
-    style D fill:#fde68a
+    style A fill:#f87171,stroke:#991b1b,stroke-width:2px
+    style B fill:#60a5fa,stroke:#1d4ed8,stroke-width:2px
+    style C fill:#4ade80,stroke:#047857,stroke-width:2px
+    style D fill:#facc15,stroke:#a16207,stroke-width:2px
+    linkStyle 0,1,2 stroke:#6366f1,stroke-width:2px
 ```
 
 ## Getting Started
@@ -276,16 +279,16 @@ Our performance optimization includes:
 ### Quality Management
 
 ```
-┌─────────────┐      ┌─────────────┐
-│   Network   │─────▶│   Quality   │
-│  Monitor    │      │  Adapter    │
-└─────────────┘      └─────────────┘
-       │                    │
-       ▼                    ▼
-┌─────────────┐      ┌─────────────┐
-│   Stream    │◀─────│   Media     │
-│  Optimizer  │      │  Encoder    │
-└─────────────┘      └─────────────┘
+┌─────────────────────┐      ┌─────────────────────┐
+│      Network        │─────▶│      Quality        │
+│      Monitor        │      │      Adapter        │
+└─────────────────────┘      └─────────────────────┘
+          │                           │
+          ▼                           ▼
+┌─────────────────────┐      ┌─────────────────────┐
+│      Stream         │◀─────│      Media          │
+│      Optimizer      │      │      Encoder        │
+└─────────────────────┘      └─────────────────────┘
 ```
 
 The quality management system continuously monitors and adjusts:
