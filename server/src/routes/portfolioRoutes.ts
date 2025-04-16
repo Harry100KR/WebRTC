@@ -1,14 +1,14 @@
-import express from 'express';
+import express, { Request, Response } from 'express';
 import { body, param } from 'express-validator';
-import { authenticateJWT } from '../middleware/auth';
-import { validateRequest } from '../middleware/validation';
+import { authenticateToken as authenticateJWT } from '../middleware/auth';
+import { validateRequest } from '../middleware/validateRequest';
 import { PortfolioController } from '../controllers/portfolioController';
 
 const router = express.Router();
 const portfolioController = new PortfolioController();
 
 // Get all portfolios for the authenticated user
-router.get('/', authenticateJWT, portfolioController.getUserPortfolios);
+router.get('/', authenticateJWT, (req: Request, res: Response) => portfolioController.getUserPortfolios(req, res));
 
 // Get a specific portfolio by ID
 router.get(
@@ -16,7 +16,7 @@ router.get(
   authenticateJWT,
   [param('id').isInt().withMessage('Portfolio ID must be an integer')],
   validateRequest,
-  portfolioController.getPortfolioById
+  (req: Request, res: Response) => portfolioController.getPortfolioById(req, res)
 );
 
 // Create a new portfolio
@@ -30,7 +30,7 @@ router.post(
     body('instruments').isArray().withMessage('instruments must be an array'),
   ],
   validateRequest,
-  portfolioController.createPortfolio
+  (req: Request, res: Response) => portfolioController.createPortfolio(req, res)
 );
 
 // Update a portfolio
@@ -45,7 +45,7 @@ router.put(
     body('instruments').optional().isArray().withMessage('instruments must be an array'),
   ],
   validateRequest,
-  portfolioController.updatePortfolio
+  (req: Request, res: Response) => portfolioController.updatePortfolio(req, res)
 );
 
 // Delete a portfolio
@@ -54,7 +54,7 @@ router.delete(
   authenticateJWT,
   [param('id').isInt().withMessage('Portfolio ID must be an integer')],
   validateRequest,
-  portfolioController.deletePortfolio
+  (req: Request, res: Response) => portfolioController.deletePortfolio(req, res)
 );
 
 // Add an instrument to a portfolio
@@ -66,7 +66,7 @@ router.post(
     param('instrumentId').isInt().withMessage('Instrument ID must be an integer'),
   ],
   validateRequest,
-  portfolioController.addInstrument
+  (req: Request, res: Response) => portfolioController.addInstrument(req, res)
 );
 
 // Remove an instrument from a portfolio
@@ -78,7 +78,7 @@ router.delete(
     param('instrumentId').isInt().withMessage('Instrument ID must be an integer'),
   ],
   validateRequest,
-  portfolioController.removeInstrument
+  (req: Request, res: Response) => portfolioController.removeInstrument(req, res)
 );
 
 export default router; 

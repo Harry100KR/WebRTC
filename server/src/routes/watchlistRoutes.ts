@@ -1,14 +1,14 @@
-import express from 'express';
+import express, { Request, Response } from 'express';
 import { body, param } from 'express-validator';
-import { authenticateJWT } from '../middleware/auth';
-import { validateRequest } from '../middleware/validation';
+import { authenticateToken as authenticateJWT } from '../middleware/auth';
+import { validateRequest } from '../middleware/validateRequest';
 import { WatchlistController } from '../controllers/watchlistController';
 
 const router = express.Router();
 const watchlistController = new WatchlistController();
 
 // Get all watchlists for the authenticated user
-router.get('/', authenticateJWT, watchlistController.getUserWatchlists);
+router.get('/', authenticateJWT, (req: Request, res: Response) => watchlistController.getUserWatchlists(req, res));
 
 // Get a specific watchlist by ID
 router.get(
@@ -16,7 +16,7 @@ router.get(
   authenticateJWT,
   [param('id').isInt().withMessage('Watchlist ID must be an integer')],
   validateRequest,
-  watchlistController.getWatchlistById
+  (req: Request, res: Response) => watchlistController.getWatchlistById(req, res)
 );
 
 // Create a new watchlist
@@ -29,7 +29,7 @@ router.post(
     body('instruments').isArray().withMessage('instruments must be an array'),
   ],
   validateRequest,
-  watchlistController.createWatchlist
+  (req: Request, res: Response) => watchlistController.createWatchlist(req, res)
 );
 
 // Update a watchlist
@@ -43,7 +43,7 @@ router.put(
     body('instruments').optional().isArray().withMessage('instruments must be an array'),
   ],
   validateRequest,
-  watchlistController.updateWatchlist
+  (req: Request, res: Response) => watchlistController.updateWatchlist(req, res)
 );
 
 // Delete a watchlist
@@ -52,7 +52,7 @@ router.delete(
   authenticateJWT,
   [param('id').isInt().withMessage('Watchlist ID must be an integer')],
   validateRequest,
-  watchlistController.deleteWatchlist
+  (req: Request, res: Response) => watchlistController.deleteWatchlist(req, res)
 );
 
 // Add an instrument to a watchlist
@@ -64,7 +64,7 @@ router.post(
     param('instrumentId').isInt().withMessage('Instrument ID must be an integer'),
   ],
   validateRequest,
-  watchlistController.addInstrument
+  (req: Request, res: Response) => watchlistController.addInstrument(req, res)
 );
 
 // Remove an instrument from a watchlist
@@ -76,7 +76,7 @@ router.delete(
     param('instrumentId').isInt().withMessage('Instrument ID must be an integer'),
   ],
   validateRequest,
-  watchlistController.removeInstrument
+  (req: Request, res: Response) => watchlistController.removeInstrument(req, res)
 );
 
 export default router; 

@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import db from '../db';
+import { pgPool as db } from '../config/database';
 import logger from '../utils/logger';
 
 export class PortfolioController {
