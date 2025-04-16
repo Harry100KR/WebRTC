@@ -16,17 +16,22 @@ A secure and performant video counseling platform built with React, Node.js, and
 
 ### WebRTC Communication Flow
 
-```mermaid
-flowchart LR
-    A(Client A) -->|1. Signaling| B(Signaling Server)
-    C(Client B) -->|1. Signaling| B
-    B -->|2. Exchange SDP/ICE| A
-    B -->|2. Exchange SDP/ICE| C
-    A <-->|3. P2P Connection| C
-    D(STUN/TURN Server) -->|4. NAT Traversal| A
-    D -->|4. NAT Traversal| C
-    E(Media Server) -->|5. Recording/Broadcasting| A
-    E -->|5. Recording/Broadcasting| C
+```
+Client A ─────────────┐
+                      ▼
+                 Signaling Server
+                      ▲
+Client B ─────────────┘
+      ▲              ▲
+      │              │
+      └──────────────┘
+    P2P Connection
+
+STUN/TURN ────► Client A
+Server    ────► Client B
+
+Media     ────► Client A
+Server    ────► Client B
 ```
 
 ### System Components
@@ -70,15 +75,19 @@ flowchart LR
 
 ### Security Architecture
 
-```mermaid
-flowchart TD
-    A(Client) -->|TLS/SSL| B(Load Balancer)
-    B --> C(Application Server)
-    C --> D(Authentication Service)
-    C --> E(Redis Cache)
-    C --> F(Media Server)
-    C --> G(Database)
-    H(STUN/TURN) -->|Encrypted| A
+```
+                  ┌─────────────────┐
+                  │  Load Balancer  │
+                  └────────┬────────┘
+                          │
+                  ┌───────▼────────┐
+                  │     Server     │
+                  └───┬───┬───┬────┘
+          ┌──────────┘   │   └──────────┐
+          ▼              ▼              ▼
+┌──────────────┐  ┌──────────┐  ┌──────────┐
+│     Auth     │  │  Redis   │  │   Media  │
+└──────────────┘  └──────────┘  └──────────┘
 ```
 
 ## 🚀 Prerequisites
@@ -237,14 +246,16 @@ docker-compose exec server npm run format
 
 ### WebRTC Quality of Service
 
-```mermaid
-flowchart TD
-    A(Network Monitor) -->|Bandwidth Detection| B(Quality Adapter)
-    B -->|Resolution Control| C(Video Encoder)
-    B -->|Bitrate Control| D(Audio Encoder)
-    E(Network Conditions) -->|Feedback| A
-    C -->|Optimized Stream| F(Peer Connection)
-    D -->|Optimized Stream| F
+```
+Network Monitor ────► Quality Adapter
+                         │
+                    ┌────┴────┐
+                    ▼         ▼
+             Video Encoder  Audio Encoder
+                    │         │
+                    └────┬────┘
+                         ▼
+                  Peer Connection
 ```
 
 ## 📝 Deployment
