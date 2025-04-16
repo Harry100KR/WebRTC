@@ -71,14 +71,14 @@ flowchart LR
 ### Security Architecture
 
 ```mermaid
-graph TD
-    A[Client] -->|TLS/SSL| B[Load Balancer]
-    B --> C[Application Server]
-    C --> D[Authentication Service]
-    C --> E[Redis Cache]
-    C --> F[Media Server]
-    C --> G[Database]
-    H[STUN/TURN] -->|Encrypted| A
+flowchart TD
+    A(Client) -->|TLS/SSL| B(Load Balancer)
+    B --> C(Application Server)
+    C --> D(Authentication Service)
+    C --> E(Redis Cache)
+    C --> F(Media Server)
+    C --> G(Database)
+    H(STUN/TURN) -->|Encrypted| A
 ```
 
 ## 🚀 Prerequisites
@@ -238,12 +238,12 @@ docker-compose exec server npm run format
 ### WebRTC Quality of Service
 
 ```mermaid
-graph TD
-    A[Network Monitor] -->|Bandwidth Detection| B[Quality Adapter]
-    B -->|Resolution Control| C[Video Encoder]
-    B -->|Bitrate Control| D[Audio Encoder]
-    E[Network Conditions] -->|Feedback| A
-    C -->|Optimized Stream| F[Peer Connection]
+flowchart TD
+    A(Network Monitor) -->|Bandwidth Detection| B(Quality Adapter)
+    B -->|Resolution Control| C(Video Encoder)
+    B -->|Bitrate Control| D(Audio Encoder)
+    E(Network Conditions) -->|Feedback| A
+    C -->|Optimized Stream| F(Peer Connection)
     D -->|Optimized Stream| F
 ```
 
