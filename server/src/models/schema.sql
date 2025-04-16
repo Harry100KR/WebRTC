@@ -34,8 +34,23 @@ CREATE INDEX IF NOT EXISTS idx_financial_instruments_risk_level ON financial_ins
 CREATE INDEX IF NOT EXISTS idx_financial_instruments_is_active ON financial_instruments(is_active);
 
 -- Full-text search
-CREATE INDEX IF NOT EXISTS idx_financial_instruments_fts ON financial_instruments 
-    USING gin(to_tsvector('english', name || ' ' || COALESCE(description, '')));
+DROP INDEX IF EXISTS idx_financial_instruments_fts;
+CREATE INDEX idx_financial_instruments_fts ON financial_instruments 
+    USING gin(to_tsvector('english', 
+        name || ' ' || 
+        COALESCE(description, '') || ' ' || 
+        COALESCE(risk_level, '') || ' ' || 
+        COALESCE(term, '') || ' ' ||
+        COALESCE(features::text, '') || ' ' ||
+        COALESCE(risks::text, '')
+    ));
+
+-- Create trigram index for fuzzy search
+CREATE EXTENSION IF NOT EXISTS pg_trgm;
+CREATE INDEX idx_financial_instruments_trigram_name ON financial_instruments 
+    USING gin (name gin_trgm_ops);
+CREATE INDEX idx_financial_instruments_trigram_description ON financial_instruments 
+    USING gin (description gin_trgm_ops);
 
 -- Function to update updated_at timestamp
 CREATE OR REPLACE FUNCTION update_updated_at_column()

@@ -1,5 +1,6 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
-import { api } from '../../services/api';
+import axios from 'axios';
+import type { FiltersState } from './filtersSlice';
 
 export interface Product {
   id: string;
@@ -9,6 +10,7 @@ export interface Product {
   interestRate?: number;
   term?: string;
   minimumInvestment: number;
+  riskLevel: string;
   features: string[];
   risks: string[];
   documents: string[];
@@ -30,13 +32,20 @@ const initialState: ProductsState = {
 
 export const fetchProducts = createAsyncThunk(
   'products/fetchProducts',
-  async (_, { rejectWithValue }) => {
-    try {
-      const response = await api.get('/products');
-      return response.data;
-    } catch (error) {
-      return rejectWithValue('Failed to fetch products');
+  async (filters: FiltersState) => {
+    const params = new URLSearchParams();
+    
+    if (filters.searchTerm) params.append('search', filters.searchTerm);
+    if (filters.category) params.append('category', filters.category);
+    if (filters.minInvestment) params.append('minInvestment', filters.minInvestment.toString());
+    if (filters.maxInvestment) params.append('maxInvestment', filters.maxInvestment.toString());
+    if (filters.sortBy) {
+      params.append('sortBy', filters.sortBy);
+      params.append('sortOrder', filters.sortOrder);
     }
+    
+    const response = await axios.get(`/api/products?${params.toString()}`);
+    return response.data.data;
   }
 );
 
@@ -63,7 +72,7 @@ const productsSlice = createSlice({
       })
       .addCase(fetchProducts.rejected, (state, action) => {
         state.loading = false;
-        state.error = action.payload as string;
+        state.error = action.error.message || 'Failed to fetch products';
       });
   },
 });

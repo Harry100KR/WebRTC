@@ -5,6 +5,9 @@ WORKDIR /app
 # Install development dependencies
 RUN apk add --no-cache python3 make g++
 
+# Install ts-node-dev globally
+RUN npm install -g ts-node-dev
+
 # Copy package files
 COPY package*.json ./
 

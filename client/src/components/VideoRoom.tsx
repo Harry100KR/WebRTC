@@ -1,9 +1,12 @@
 import React, { useEffect, useRef, useState } from 'react';
 import SimplePeer from 'simple-peer';
 import io, { Socket } from 'socket.io-client';
-import { Box, Button, Grid, Typography } from '@mui/material';
+import { Box, Button, Grid, Typography, Paper, Divider, Alert, Snackbar } from '@mui/material';
 import RecordingConsent from './RecordingConsent';
 import useRecording from '../hooks/useRecording';
+import ScreenShare from './ScreenShare/ScreenShare';
+import Recording from './Recording/Recording';
+import FinancialInteraction from './FinancialInteraction';
 
 interface VideoRoomProps {
   socket: ReturnType<typeof io>;
@@ -16,6 +19,21 @@ interface VideoRoomProps {
 interface SignalData {
   signal: SimplePeer.SignalData;
   roomId: string;
+  from?: string;
+}
+
+interface RecordingData {
+  type: 'video' | 'screen' | 'both';
+  includeFinancialData: boolean;
+}
+
+interface AnnotationData {
+  id: string;
+  userId: string;
+  roomId: string;
+  content: string;
+  position: { x: number, y: number };
+  timestamp: number;
 }
 
 const VideoRoom: React.FC<VideoRoomProps> = ({ socket, roomId, userId, role }) => {
@@ -24,6 +42,14 @@ const VideoRoom: React.FC<VideoRoomProps> = ({ socket, roomId, userId, role }) =
   const [screenStream, setScreenStream] = useState<MediaStream | null>(null);
   const [isRecording, setIsRecording] = useState(false);
   const [showConsentDialog, setShowConsentDialog] = useState(false);
+  const [remoteUserId, setRemoteUserId] = useState<string | null>(null);
+  const [connectionStatus, setConnectionStatus] = useState<'connecting' | 'connected' | 'disconnected'>('connecting');
+  const [snackbar, setSnackbar] = useState<{open: boolean, message: string, severity: 'success' | 'error' | 'info'}>({
+    open: false,
+    message: '',
+    severity: 'info'
+  });
+  const [selectedProduct, setSelectedProduct] = useState<any>(null);
   
   const localVideoRef = useRef<HTMLVideoElement>(null);
   const remoteVideoRef = useRef<HTMLVideoElement>(null);
@@ -43,18 +69,43 @@ const VideoRoom: React.FC<VideoRoomProps> = ({ socket, roomId, userId, role }) =
           method: 'POST',
           body: formData,
         });
+        showSnackbar('Recording saved successfully', 'success');
       } catch (error) {
         console.error('Failed to upload recording:', error);
+        showSnackbar('Failed to save recording', 'error');
       }
     }
   });
+
+  const showSnackbar = (message: string, severity: 'success' | 'error' | 'info') => {
+    setSnackbar({
+      open: true,
+      message,
+      severity
+    });
+  };
+
+  const handleCloseSnackbar = () => {
+    setSnackbar({
+      ...snackbar,
+      open: false
+    });
+  };
 
   useEffect(() => {
     const initializeMedia = async () => {
       try {
         const mediaStream = await navigator.mediaDevices.getUserMedia({
-          video: true,
-          audio: true
+          video: {
+            width: { ideal: 1280 },
+            height: { ideal: 720 },
+            facingMode: 'user'
+          },
+          audio: {
+            echoCancellation: true,
+            noiseSuppression: true,
+            autoGainControl: true
+          }
         });
         setStream(mediaStream);
         
@@ -63,6 +114,7 @@ const VideoRoom: React.FC<VideoRoomProps> = ({ socket, roomId, userId, role }) =
         }
       } catch (error) {
         console.error('Failed to get media devices:', error);
+        showSnackbar('Failed to access camera/microphone', 'error');
       }
     };
 
@@ -77,63 +129,103 @@ const VideoRoom: React.FC<VideoRoomProps> = ({ socket, roomId, userId, role }) =
         screenStream.getTracks().forEach(track => track.stop());
       }
     };
-  }, [stream, screenStream]);
+  }, []);
 
   useEffect(() => {
     if (!stream) return;
 
-    const peer = new SimplePeer({
+    // Set up peer connection with ICE server configuration
+    const peerOptions: SimplePeer.Options = {
       initiator: role === 'counselor',
       stream,
-      trickle: false
-    });
+      trickle: false,
+      config: {
+        iceServers: [
+          { urls: 'stun:stun.l.google.com:19302' },
+          { urls: 'stun:global.stun.twilio.com:3478' }
+        ]
+      }
+    };
 
-    peer.on('signal', (data: SimplePeer.SignalData) => {
+    const peerInstance = new SimplePeer(peerOptions);
+
+    peerInstance.on('signal', (data: SimplePeer.SignalData) => {
       socket.emit('signal', { signal: data, roomId });
     });
 
-    peer.on('stream', (remoteStream: MediaStream) => {
+    peerInstance.on('connect', () => {
+      setConnectionStatus('connected');
+      showSnackbar('Connected to remote peer', 'success');
+    });
+
+    peerInstance.on('stream', (remoteStream: MediaStream) => {
       if (remoteVideoRef.current) {
         remoteVideoRef.current.srcObject = remoteStream;
       }
     });
 
-    socket.on('signal', ({ signal }: SignalData) => {
-      peer.signal(signal);
+    peerInstance.on('error', (err) => {
+      console.error('Peer connection error:', err);
+      setConnectionStatus('disconnected');
+      showSnackbar('Connection error', 'error');
     });
 
-    setPeer(peer);
+    peerInstance.on('close', () => {
+      setConnectionStatus('disconnected');
+      showSnackbar('Connection closed', 'info');
+    });
+
+    socket.on('signal', ({ signal, from }: SignalData) => {
+      if (from) {
+        setRemoteUserId(from);
+      }
+      peerInstance.signal(signal);
+    });
+
+    socket.on('user-connected', (data: {userId: string}) => {
+      showSnackbar('Remote user connected', 'info');
+      setRemoteUserId(data.userId);
+    });
+
+    socket.on('user-disconnected', () => {
+      showSnackbar('Remote user disconnected', 'info');
+      setRemoteUserId(null);
+    });
+
+    socket.on('recording-consent-response', (response: {approved: boolean, type: string}) => {
+      if (response.approved) {
+        setIsRecording(true);
+        startRecording();
+        showSnackbar('Recording started with consent', 'success');
+      } else {
+        showSnackbar('Recording consent denied', 'error');
+      }
+    });
+
+    socket.on('annotation-added', (data: AnnotationData) => {
+      showSnackbar('New annotation added', 'info');
+    });
+
+    setPeer(peerInstance);
 
     return () => {
-      peer.destroy();
+      peerInstance.destroy();
       socket.off('signal');
+      socket.off('user-connected');
+      socket.off('user-disconnected');
+      socket.off('recording-consent-response');
+      socket.off('annotation-added');
     };
-  }, [stream, socket, roomId, role]);
+  }, [stream, socket, roomId, role, startRecording]);
 
-  const handleScreenShare = async () => {
-    try {
-      const screenMediaStream = await navigator.mediaDevices.getDisplayMedia({
-        video: true
-      });
-      setScreenStream(screenMediaStream);
-      
-      if (screenShareRef.current) {
-        screenShareRef.current.srcObject = screenMediaStream;
-      }
-
-      // Send screen share stream to peer
-      if (peer) {
-        peer.addStream(screenMediaStream);
-      }
-
-      screenMediaStream.getVideoTracks()[0].onended = () => {
-        setScreenStream(null);
-        if (peer) {
-          peer.removeStream(screenMediaStream);
-        }
-      };
-    } catch (error) {
-      console.error('Failed to share screen:', error);
+  const handleScreenShare = (stream: MediaStream | null) => {
+    setScreenStream(stream);
+    
+    if (stream && screenShareRef.current) {
+      screenShareRef.current.srcObject = stream;
+      socket.emit('screen-share-started', roomId);
+    } else if (!stream) {
+      socket.emit('screen-share-stopped', roomId);
     }
   };
 
@@ -143,80 +235,297 @@ const VideoRoom: React.FC<VideoRoomProps> = ({ socket, roomId, userId, role }) =
     }
   };
 
-  const handleRecordingConsent = async (type: 'video' | 'screen' | 'both') => {
+  const handleRecordingConsent = async (type: 'video' | 'screen' | 'both', includeFinancialData: boolean = false) => {
     setShowConsentDialog(false);
     try {
       const response = await fetch('/api/recordings/consent', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sessionId: roomId, type })
+        body: JSON.stringify({ 
+          sessionId: roomId, 
+          type,
+          includeFinancialData
+        })
       });
 
       if (response.ok) {
         setIsRecording(true);
         startRecording();
+        showSnackbar('Recording started', 'success');
       }
     } catch (error) {
       console.error('Failed to get recording consent:', error);
+      showSnackbar('Failed to start recording', 'error');
     }
   };
 
-  return (
-    <Box p={3}>
-      <Grid container spacing={3}>
-        <Grid item xs={12} md={6}>
-          <Typography variant="h6">Local Video</Typography>
-          <video
-            ref={localVideoRef}
-            autoPlay
-            muted
-            playsInline
-            style={{ width: '100%', maxWidth: '400px' }}
-          />
-        </Grid>
-        <Grid item xs={12} md={6}>
-          <Typography variant="h6">Remote Video</Typography>
-          <video
-            ref={remoteVideoRef}
-            autoPlay
-            playsInline
-            style={{ width: '100%', maxWidth: '400px' }}
-          />
-        </Grid>
-        {screenStream && (
-          <Grid item xs={12}>
-            <Typography variant="h6">Screen Share</Typography>
-            <video
-              ref={screenShareRef}
-              autoPlay
-              muted
-              playsInline
-              style={{ width: '100%', maxWidth: '800px' }}
-            />
-          </Grid>
-        )}
-      </Grid>
+  const handleRecordingComplete = async (blob: Blob, type: string) => {
+    const formData = new FormData();
+    formData.append('recording', blob);
+    formData.append('sessionId', roomId);
+    formData.append('type', type);
 
-      <Box mt={3}>
-        <Button
-          variant="contained"
-          color="primary"
-          onClick={handleScreenShare}
-          disabled={!!screenStream}
-        >
-          {screenStream ? 'Sharing Screen' : 'Share Screen'}
-        </Button>
-        {role === 'counselor' && (
-          <Button
-            variant="contained"
-            color={isRecording ? 'secondary' : 'primary'}
-            onClick={isRecording ? stopRecording : handleStartRecording}
-            style={{ marginLeft: '1rem' }}
+    try {
+      await fetch('/api/recordings/upload', {
+        method: 'POST',
+        body: formData,
+      });
+      showSnackbar(`${type} recording saved successfully`, 'success');
+    } catch (error) {
+      console.error('Failed to upload recording:', error);
+      showSnackbar('Failed to save recording', 'error');
+    }
+  };
+
+  const handleSaveAnnotation = (annotation: any) => {
+    socket.emit('add-annotation', {
+      ...annotation,
+      roomId,
+      userId
+    });
+    showSnackbar('Annotation saved', 'success');
+  };
+
+  const handleProductSelect = (product: any) => {
+    setSelectedProduct(product);
+    
+    // Notify other user about the product selection
+    socket.emit('product-selected', {
+      roomId,
+      productId: product.id,
+      productData: product
+    });
+    
+    showSnackbar(`Product ${product.name} selected for discussion`, 'info');
+  };
+
+  const handleScreenShareRequest = () => {
+    // Launch screen sharing when requested from FinancialInteraction component
+    navigator.mediaDevices.getDisplayMedia({
+      video: true,
+      audio: true
+    })
+    .then(stream => {
+      handleScreenShare(stream);
+    })
+    .catch(error => {
+      console.error('Error requesting screen share:', error);
+      showSnackbar('Failed to start screen sharing', 'error');
+    });
+  };
+
+  return (
+    <Box sx={{ p: 3 }}>
+      <Grid container spacing={3}>
+        {/* Connection status */}
+        <Grid item xs={12}>
+          <Alert 
+            severity={
+              connectionStatus === 'connected' ? 'success' : 
+              connectionStatus === 'connecting' ? 'info' : 'error'
+            }
+            sx={{ mb: 2 }}
           >
-            {isRecording ? 'Stop Recording' : 'Start Recording'}
-          </Button>
-        )}
-      </Box>
+            {connectionStatus === 'connected' && 'Connected to remote user'}
+            {connectionStatus === 'connecting' && 'Connecting to remote user...'}
+            {connectionStatus === 'disconnected' && 'Disconnected from remote user'}
+          </Alert>
+        </Grid>
+        
+        {/* Video streams */}
+        <Grid item xs={12} md={8}>
+          <Paper sx={{ p: 2 }}>
+            <Typography variant="h6" gutterBottom>Video Conference</Typography>
+            <Divider sx={{ mb: 2 }} />
+            
+            <Grid container spacing={2}>
+              <Grid item xs={12} md={6}>
+                <Box sx={{ position: 'relative', height: '100%' }}>
+                  <Typography variant="subtitle1" gutterBottom>
+                    {role === 'counselor' ? 'You (Advisor)' : 'You (Client)'}
+                  </Typography>
+                  <Box 
+                    sx={{ 
+                      position: 'relative',
+                      width: '100%',
+                      paddingTop: '56.25%', // 16:9 aspect ratio
+                      backgroundColor: '#f0f0f0',
+                      borderRadius: 1,
+                      overflow: 'hidden'
+                    }}
+                  >
+                    <video
+                      ref={localVideoRef}
+                      autoPlay
+                      muted
+                      playsInline
+                      style={{ 
+                        position: 'absolute',
+                        top: 0,
+                        left: 0,
+                        width: '100%',
+                        height: '100%',
+                        objectFit: 'cover'
+                      }}
+                    />
+                    <Box 
+                      sx={{
+                        position: 'absolute',
+                        bottom: 10,
+                        left: 10,
+                        backgroundColor: 'rgba(0,0,0,0.5)',
+                        color: 'white',
+                        padding: '2px 8px',
+                        borderRadius: 1,
+                        fontSize: '0.75rem'
+                      }}
+                    >
+                      {role === 'counselor' ? 'Advisor' : 'Client'}
+                    </Box>
+                  </Box>
+                </Box>
+              </Grid>
+              
+              <Grid item xs={12} md={6}>
+                <Box sx={{ position: 'relative', height: '100%' }}>
+                  <Typography variant="subtitle1" gutterBottom>
+                    {role === 'counselor' ? 'Client' : 'Financial Advisor'}
+                  </Typography>
+                  <Box 
+                    sx={{ 
+                      position: 'relative',
+                      width: '100%',
+                      paddingTop: '56.25%', // 16:9 aspect ratio
+                      backgroundColor: '#f0f0f0',
+                      borderRadius: 1,
+                      overflow: 'hidden',
+                      display: 'flex',
+                      justifyContent: 'center',
+                      alignItems: 'center'
+                    }}
+                  >
+                    {!remoteUserId && (
+                      <Typography 
+                        variant="body2" 
+                        color="text.secondary"
+                        sx={{ 
+                          position: 'absolute',
+                          top: '50%',
+                          left: '50%',
+                          transform: 'translate(-50%, -50%)'
+                        }}
+                      >
+                        Waiting for remote user...
+                      </Typography>
+                    )}
+                    <video
+                      ref={remoteVideoRef}
+                      autoPlay
+                      playsInline
+                      style={{ 
+                        position: 'absolute',
+                        top: 0,
+                        left: 0,
+                        width: '100%',
+                        height: '100%',
+                        objectFit: 'cover',
+                        display: remoteUserId ? 'block' : 'none'
+                      }}
+                    />
+                    <Box 
+                      sx={{
+                        position: 'absolute',
+                        bottom: 10,
+                        left: 10,
+                        backgroundColor: 'rgba(0,0,0,0.5)',
+                        color: 'white',
+                        padding: '2px 8px',
+                        borderRadius: 1,
+                        fontSize: '0.75rem'
+                      }}
+                    >
+                      {role === 'counselor' ? 'Client' : 'Advisor'}
+                    </Box>
+                  </Box>
+                </Box>
+              </Grid>
+              
+              {screenStream && (
+                <Grid item xs={12}>
+                  <Typography variant="subtitle1" gutterBottom>Screen Share</Typography>
+                  <Box 
+                    sx={{ 
+                      position: 'relative',
+                      width: '100%',
+                      paddingTop: '42.85%', // 21:9 aspect ratio for screen share
+                      backgroundColor: '#f0f0f0',
+                      borderRadius: 1,
+                      overflow: 'hidden'
+                    }}
+                  >
+                    <video
+                      ref={screenShareRef}
+                      autoPlay
+                      muted
+                      playsInline
+                      style={{ 
+                        position: 'absolute',
+                        top: 0,
+                        left: 0,
+                        width: '100%',
+                        height: '100%',
+                        objectFit: 'contain'
+                      }}
+                    />
+                  </Box>
+                </Grid>
+              )}
+            </Grid>
+          </Paper>
+        </Grid>
+        
+        {/* Financial interaction */}
+        <Grid item xs={12} md={4}>
+          <FinancialInteraction 
+            sessionId={roomId}
+            userId={userId}
+            role={role}
+            product={selectedProduct}
+            onScreenShareRequest={handleScreenShareRequest}
+            onSaveAnnotation={handleSaveAnnotation}
+          />
+        </Grid>
+        
+        {/* Controls */}
+        <Grid item xs={12}>
+          <Paper sx={{ p: 2 }}>
+            <Grid container spacing={2}>
+              <Grid item xs={12} md={4}>
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                  <Typography variant="subtitle1" gutterBottom>Screen Sharing</Typography>
+                  <ScreenShare 
+                    onScreenStream={handleScreenShare} 
+                    peer={peer}
+                  />
+                </Box>
+              </Grid>
+              
+              <Grid item xs={12} md={8}>
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                  <Typography variant="subtitle1" gutterBottom>Recording</Typography>
+                  <Recording 
+                    stream={stream}
+                    screenStream={screenStream}
+                    onComplete={handleRecordingComplete}
+                    sessionId={roomId}
+                    includeFinancialData={!!selectedProduct}
+                  />
+                </Box>
+              </Grid>
+            </Grid>
+          </Paper>
+        </Grid>
+      </Grid>
 
       {showConsentDialog && (
         <RecordingConsent
@@ -224,6 +533,16 @@ const VideoRoom: React.FC<VideoRoomProps> = ({ socket, roomId, userId, role }) =
           onDeny={() => setShowConsentDialog(false)}
         />
       )}
+      
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={6000}
+        onClose={handleCloseSnackbar}
+      >
+        <Alert onClose={handleCloseSnackbar} severity={snackbar.severity}>
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 };

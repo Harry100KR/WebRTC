@@ -28,59 +28,8 @@ const ProductsPage: React.FC = () => {
   const filters = useSelector((state: RootState) => state.filters);
 
   useEffect(() => {
-    dispatch(fetchProducts());
-  }, [dispatch]);
-
-  const filteredProducts = products.filter((product) => {
-    const matchesSearch = product.name
-      .toLowerCase()
-      .includes(filters.searchTerm.toLowerCase()) ||
-      product.description
-        .toLowerCase()
-        .includes(filters.searchTerm.toLowerCase());
-
-    const matchesCategory = !filters.category || product.category === filters.category;
-
-    const matchesInvestment =
-      (!filters.minInvestment ||
-        product.minimumInvestment >= filters.minInvestment) &&
-      (!filters.maxInvestment ||
-        product.minimumInvestment <= filters.maxInvestment);
-
-    const matchesInterestRate =
-      (!filters.minInterestRate ||
-        (product.interestRate && product.interestRate >= filters.minInterestRate)) &&
-      (!filters.maxInterestRate ||
-        (product.interestRate && product.interestRate <= filters.maxInterestRate));
-
-    return (
-      matchesSearch &&
-      matchesCategory &&
-      matchesInvestment &&
-      matchesInterestRate
-    );
-  });
-
-  const sortedProducts = [...filteredProducts].sort((a, b) => {
-    if (!filters.sortBy) return 0;
-
-    switch (filters.sortBy) {
-      case 'name':
-        return filters.sortOrder === 'asc'
-          ? a.name.localeCompare(b.name)
-          : b.name.localeCompare(a.name);
-      case 'interestRate':
-        const rateA = a.interestRate || 0;
-        const rateB = b.interestRate || 0;
-        return filters.sortOrder === 'asc' ? rateA - rateB : rateB - rateA;
-      case 'minimumInvestment':
-        return filters.sortOrder === 'asc'
-          ? a.minimumInvestment - b.minimumInvestment
-          : b.minimumInvestment - a.minimumInvestment;
-      default:
-        return 0;
-    }
-  });
+    dispatch(fetchProducts(filters));
+  }, [dispatch, filters]);
 
   if (loading) {
     return (
@@ -106,59 +55,41 @@ const ProductsPage: React.FC = () => {
   return (
     <Box>
       <ProductFilters />
-      
-      <Grid container spacing={3} sx={{ mt: 2 }}>
-        {sortedProducts.map((product, index) => (
+      <Grid container spacing={3} mt={2}>
+        {products.map((product) => (
           <Grid item xs={12} sm={6} md={4} key={product.id}>
             <MotionCard
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: index * 0.1 }}
-              sx={{
-                height: '100%',
-                display: 'flex',
-                flexDirection: 'column',
-                '&:hover': {
-                  transform: 'translateY(-4px)',
-                  boxShadow: (theme) => theme.shadows[4],
-                  transition: 'all 0.3s ease-in-out',
-                },
-              }}
+              transition={{ duration: 0.3 }}
+              sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}
             >
               <CardContent sx={{ flexGrow: 1 }}>
                 <Typography gutterBottom variant="h5" component="h2">
                   {product.name}
                 </Typography>
-                <Typography
-                  variant="body2"
-                  color="text.secondary"
-                  sx={{ mb: 2 }}
-                >
+                <Typography color="text.secondary" paragraph>
                   {product.description}
                 </Typography>
-                {product.interestRate && (
+                <Box display="flex" gap={1} mb={2}>
                   <Chip
-                    label={`${product.interestRate}% Interest Rate`}
-                    color="primary"
+                    label={`${product.minimumInvestment} USD min`}
                     size="small"
-                    sx={{ mr: 1, mb: 1 }}
                   />
-                )}
-                <Chip
-                  label={`Min. $${product.minimumInvestment.toLocaleString()}`}
-                  color="secondary"
-                  size="small"
-                  sx={{ mb: 1 }}
-                />
-                <Box sx={{ mt: 2 }}>
-                  <Button
-                    variant="contained"
-                    fullWidth
-                    onClick={() => navigate(`/products/${product.id}`)}
-                  >
-                    Learn More
-                  </Button>
+                  <Chip label={product.riskLevel} size="small" />
+                  {product.interestRate && (
+                    <Chip
+                      label={`${product.interestRate}% interest`}
+                      size="small"
+                    />
+                  )}
                 </Box>
+                <Button
+                  size="small"
+                  onClick={() => navigate(`/products/${product.id}`)}
+                >
+                  Learn More
+                </Button>
               </CardContent>
             </MotionCard>
           </Grid>

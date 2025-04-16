@@ -65,4 +65,31 @@ minio_data/
 !.env.example
 
 # Recordings
-recordings/ 
+recordings/
+
+# Next.js
+.next/
+out/
+
+# Vite
+dist/
+dist-ssr/
+
+# Local SSL certificates
+*.pem
+*.key
+*.crt
+
+# WebRTC specific
+*.webm
+*.mp4
+peer-connections.json
+
+# Development artifacts
+.turbo
+.vercel
+.cache/
+.parcel-cache/
+
+# Storybook
+storybook-static/ 

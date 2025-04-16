@@ -44,7 +44,16 @@ const ProductDetailsPage: React.FC = () => {
 
   useEffect(() => {
     if (products.length === 0) {
-      dispatch(fetchProducts());
+      dispatch(fetchProducts({
+        searchTerm: '',
+        category: null,
+        minInvestment: null,
+        maxInvestment: null,
+        minInterestRate: null,
+        maxInterestRate: null,
+        sortBy: null,
+        sortOrder: 'asc'
+      }));
     }
   }, [dispatch, products.length]);
 

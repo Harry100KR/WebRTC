@@ -1,43 +1,65 @@
 import express from 'express';
 import http from 'http';
-import { Server } from 'socket.io';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import { config } from 'dotenv';
-import recordingsRouter from './routes/recordings';
-import productsRouter from './routes/products';
-import { setupWebRTC } from './services/webrtc';
+import WebRTCService from './services/webrtcService';
+import morgan from 'morgan';
+import winston from 'winston';
+import { errorHandler } from './middleware/errorHandler';
+import { authenticateToken } from './middleware/auth';
 
-// Type declarations for cookie-parser
-declare module 'express-serve-static-core' {
+// Import routes
+import productsRouter from './routes/products';
+import watchlistRouter from './routes/watchlistRoutes';
+import portfolioRouter from './routes/portfolioRoutes';
+import recordingsRouter from './routes/recordings';
+
+// Type declarations
+declare module 'express' {
   interface Request {
     cookies: any;
+    user?: {
+      id: number;
+      email: string;
+      role: string;
+    };
   }
 }
 
 config();
 
+// Configure logger
+const logger = winston.createLogger({
+  level: process.env.NODE_ENV === 'production' ? 'info' : 'debug',
+  format: winston.format.combine(
+    winston.format.timestamp(),
+    winston.format.json()
+  ),
+  transports: [
+    new winston.transports.Console(),
+    new winston.transports.File({ filename: 'logs/error.log', level: 'error' }),
+    new winston.transports.File({ filename: 'logs/combined.log' })
+  ]
+});
+
 const app = express();
 const server = http.createServer(app);
 
-// Enhanced security for Socket.IO
-const io = new Server(server, {
-  cors: {
-    origin: process.env.CLIENT_URL,
-    methods: ['GET', 'POST'],
-    credentials: true,
-    allowedHeaders: ['Authorization', 'Content-Type']
-  },
-  connectTimeout: 10000,
-  pingTimeout: 5000,
-  pingInterval: 10000,
-  transports: ['websocket', 'polling']
-});
+// Initialize WebRTC service
+const webrtcService = new WebRTCService(server, logger);
+
+// Logging
+if (process.env.NODE_ENV === 'production') {
+  app.use(morgan('combined'));
+} else {
+  app.use(morgan('dev'));
+}
 
 // Security middleware
-if (process.env.ENABLE_HELMET === 'true') {
+if (process.env.NODE_ENV === 'production') {
   app.use(helmet({
     contentSecurityPolicy: {
       directives: {
@@ -45,7 +67,7 @@ if (process.env.ENABLE_HELMET === 'true') {
         connectSrc: ["'self'", 'wss:', 'https:'],
         mediaSrc: ["'self'", 'blob:'],
         imgSrc: ["'self'", 'data:', 'blob:'],
-        scriptSrc: ["'self'"],
+        scriptSrc: ["'self'", "'unsafe-inline'"],
         styleSrc: ["'self'", "'unsafe-inline'"],
         fontSrc: ["'self'", 'data:'],
         objectSrc: ["'none'"]
@@ -90,20 +112,24 @@ if (process.env.TRUST_PROXY === '1') {
   app.set('trust proxy', 1);
 }
 
-// Routes
-app.use('/api/recordings', recordingsRouter);
-app.use('/api/products', productsRouter);
+// Configure routes with authentication
+app.use('/api/products', authenticateToken, productsRouter);
+app.use('/api/watchlist', authenticateToken, watchlistRouter);
+app.use('/api/portfolio', authenticateToken, portfolioRouter);
+app.use('/api/recordings', authenticateToken, recordingsRouter);
 
-// WebRTC setup
-setupWebRTC(io);
-
-// Error handling
-app.use((err: Error, req: express.Request, res: express.Response, next: express.NextFunction) => {
-  console.error(err.stack);
-  res.status(500).json({ error: 'Internal Server Error' });
+// Add WebRTC status endpoint
+app.get('/api/webrtc/status', (req, res) => {
+  res.json({
+    activeRooms: webrtcService.getRoomCount(),
+    status: 'healthy'
+  });
 });
 
-const PORT = process.env.PORT || 5000;
+// Error handling middleware
+app.use(errorHandler(logger));
+
+const PORT = process.env.PORT || 3001;
 server.listen(Number(PORT), () => {
-  console.log(`Server running on port ${PORT} in ${process.env.NODE_ENV} mode`);
+  logger.info(`Server running on port ${PORT} in ${process.env.NODE_ENV} mode`);
 }); 

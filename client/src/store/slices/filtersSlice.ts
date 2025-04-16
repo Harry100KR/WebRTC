@@ -1,6 +1,6 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 
-interface FiltersState {
+export interface FiltersState {
   searchTerm: string;
   category: string | null;
   minInvestment: number | null;

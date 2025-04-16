@@ -54,7 +54,17 @@ router.get('/', searchValidation, cacheMiddleware(60), async (req: Request, res:
     if (search) {
       params.push(search);
       whereClause += ` AND (
-        to_tsvector('english', name || ' ' || COALESCE(description, '')) @@ plainto_tsquery($${params.length})
+        to_tsvector('english', name || ' ' || 
+          COALESCE(description, '') || ' ' || 
+          COALESCE(risk_level, '') || ' ' || 
+          COALESCE(term, '') || ' ' ||
+          COALESCE(features::text, '') || ' ' ||
+          COALESCE(risks::text, '')
+        ) @@ websearch_to_tsquery('english', $${params.length})
+        OR
+        name ILIKE '%' || $${params.length} || '%'
+        OR
+        description ILIKE '%' || $${params.length} || '%'
       )`;
     }
     

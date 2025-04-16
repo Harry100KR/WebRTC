@@ -17,6 +17,9 @@ import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import ProfilePage from './pages/ProfilePage';
 import NotFoundPage from './pages/NotFoundPage';
+import { VideoChat } from './pages/VideoChat';
+import PortfoliosPage from './pages/PortfoliosPage';
+import WatchlistsPage from './pages/WatchlistsPage';
 
 const App: React.FC = () => {
   return (
@@ -31,11 +34,28 @@ const App: React.FC = () => {
               <Route path="/products/:id" element={<ProductDetailsPage />} />
               <Route path="/login" element={<LoginPage />} />
               <Route path="/register" element={<RegisterPage />} />
+              <Route path="/video-chat" element={<VideoChat />} />
               <Route
                 path="/profile"
                 element={
                   <PrivateRoute>
                     <ProfilePage />
+                  </PrivateRoute>
+                }
+              />
+              <Route
+                path="/portfolios"
+                element={
+                  <PrivateRoute>
+                    <PortfoliosPage />
+                  </PrivateRoute>
+                }
+              />
+              <Route
+                path="/watchlists"
+                element={
+                  <PrivateRoute>
+                    <WatchlistsPage />
                   </PrivateRoute>
                 }
               />

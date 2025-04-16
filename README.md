@@ -161,6 +161,44 @@ docker-compose exec server npm run format
 - Image optimization
 - Hardware acceleration support
 - Echo cancellation and noise suppression
+- WebRTC bandwidth adaptation
+- Automatic quality scaling
+- Network resilience with ICE/TURN/STUN configurations
+
+## Deployment
+
+### Production Setup
+
+```bash
+# Build and start production containers
+docker-compose -f docker-compose.prod.yml up -d
+
+# Monitor production logs
+docker-compose -f docker-compose.prod.yml logs -f
+```
+
+### SSL Configuration
+
+For production deployment, SSL certificates are required for WebRTC to work properly:
+
+1. Obtain SSL certificates (e.g., from Let's Encrypt)
+2. Place them in the `docker/nginx/certs` directory
+3. Update the nginx configuration in `docker/nginx/nginx.conf`
+
+### Scaling
+
+The application supports horizontal scaling:
+
+- WebSocket servers with Redis pub/sub
+- Media servers with load balancing
+- Database replication for read scaling
+
+### Monitoring
+
+- Prometheus metrics for system monitoring
+- Grafana dashboards for visualization
+- WebRTC statistics monitoring
+- Error tracking and alerting
 
 ## Contributing
 

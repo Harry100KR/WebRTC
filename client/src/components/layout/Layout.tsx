@@ -18,6 +18,9 @@ import {
   AccountCircle,
   Menu as MenuIcon,
   Search as SearchIcon,
+  VideoCall as VideoCallIcon,
+  Folder as FolderIcon,
+  Star as StarIcon
 } from '@mui/icons-material';
 import { RootState } from '../../store';
 import { logout } from '../../store/slices/authSlice';
@@ -88,6 +91,35 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 
           {!isMobile && <SearchBar />}
 
+          {user && !isMobile && (
+            <>
+              <Button
+                color="inherit"
+                startIcon={<VideoCallIcon />}
+                onClick={() => navigate('/counseling')}
+                sx={{ mr: 2 }}
+              >
+                Video Counseling
+              </Button>
+              <Button
+                color="inherit"
+                startIcon={<FolderIcon />}
+                onClick={() => navigate('/portfolios')}
+                sx={{ mr: 2 }}
+              >
+                Portfolios
+              </Button>
+              <Button
+                color="inherit"
+                startIcon={<StarIcon />}
+                onClick={() => navigate('/watchlists')}
+                sx={{ mr: 2 }}
+              >
+                Watchlists
+              </Button>
+            </>
+          )}
+
           {user ? (
             <>
               <IconButton
@@ -116,6 +148,8 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                 onClose={handleClose}
               >
                 <MenuItem onClick={handleProfile}>Profile</MenuItem>
+                <MenuItem onClick={() => { handleClose(); navigate('/portfolios'); }}>My Portfolios</MenuItem>
+                <MenuItem onClick={() => { handleClose(); navigate('/watchlists'); }}>My Watchlists</MenuItem>
                 <MenuItem onClick={handleLogout}>Logout</MenuItem>
               </Menu>
             </>
@@ -142,6 +176,15 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       >
         {user ? (
           <>
+            <MenuItem onClick={() => { handleClose(); navigate('/counseling'); }}>
+              Video Counseling
+            </MenuItem>
+            <MenuItem onClick={() => { handleClose(); navigate('/portfolios'); }}>
+              My Portfolios
+            </MenuItem>
+            <MenuItem onClick={() => { handleClose(); navigate('/watchlists'); }}>
+              My Watchlists
+            </MenuItem>
             <MenuItem onClick={handleProfile}>Profile</MenuItem>
             <MenuItem onClick={handleLogout}>Logout</MenuItem>
           </>
